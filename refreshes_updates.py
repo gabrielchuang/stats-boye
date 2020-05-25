@@ -126,6 +126,13 @@ async def add_banned_channel(channel):
 	banned_channels = open('banned_channels.csv').read().split(',')
 	return True
 
+async def add_bot(message):
+	f = open('bots.csv', 'a')
+	for x in message.mentions:
+		f.write(','+str(x.id))
+	f.close()
+	return True 
+
 async def add_admin(user):
 	global auth_admins
 	if str(user.id) in auth_admins:
@@ -232,6 +239,8 @@ async def run_admin_command(message, client):
 		success = await refresh_roles(message.guild)
 	elif cc+"refresh_emojis" in message.content:
 		success = await refresh_emojis(message.guild)
+	elif cc+"add_bot" in message.content:
+		success = await add_bot(message)
 	else:
 		success = False
 

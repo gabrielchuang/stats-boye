@@ -2,6 +2,11 @@ from enum import Enum
 import re
 import discord
 import sqlite3
+import pandas as pd
+import matplotlib 
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt 
+import json
 
 class InvalidQuery(Exception):
 	pass
@@ -11,9 +16,15 @@ class T(Enum):
 	USER = 2
 	KEYWORD = 3
 	ROLE = 4
-	DATERANGE = 5
 	REACT = 6
-	CUSTOM_REACT = 7
+	#CUSTOM_REACT = 7
+	DATE_RANGE = 8
+	IS_PINNED = 9
+	HAS_IMAGE = 10
+	EXCLUDE_BOTS = 11
+	CASE_SENSITIVE = 12
+	PINGS = 13
+	KEYWORD_INSENSITIVE = 14
 
 
 '''
@@ -22,15 +33,19 @@ usage:
 	filtering by user 			--- 	user:`samcv`		@samcv		[id # of samcv]
 	filtering by role 			--- 	role:`weeb`			@weeb		[id # of weeb role]
 	filtering by keyword 		--- 	keyword:`keyword here`
-	filtering by date range 	--- 	date-range:`2020-01-31 12:30:40,2020-05-21`
+	filtering by date range 	--- 	date-range:`2020-01-31 12:30:40 -- 2020-05-21`
+	filtering by pings 			--- 	pings:`ezekiel` 
 
 	filtering by reactions 		--- 	has-react:📈					(for standard emoji)
 						   		--- 	has-custom-react:`eyes1`		(for custom emoji)
 
-	exclude bots from results 	--- 	--exclude-bots (off by default)
+	exclude bots from results 	--- 	--exclude-bots (off by default)                                   UNDER CONSTRUCTION
 	enabling case-sensitivity 	--- 	--case-sensitive (off by default)
 	presence of attachments 	--- 	--no-image 		OR 		--has-image (neither by default)
 	pinned 						--- 	--pinned 		OR 		--not-pinned
+
+
+	split-by:`channel` or split-by:`user`
 '''
 
 class Query:
@@ -38,25 +53,103 @@ class Query:
 	def __init__(self, message, client):
 		#haha parsing go brrr
 		self.client = client
-
 		self.message = message
+
+		self.case_sensitive = self.parse_case_sensitive() # bool
 		
 		self.excludebots = self.parse_exclude_bots() # bool
-		self.case_sensitive = self.parse_case_sensitive() # bool
 		self.has_image = self.parse_has_image() # bool OPTION
 		self.is_pinned = self.parse_is_pinned() # bool OPTION
 
-		#filters : (T enum -> 'a' list) dictionary
-		self.filters = {T.CHANNEL : self.parse_channels(),  #channel object list
-						T.USER: self.parse_users(), # user object list
-						T.KEYWORD: self.parse_keywords(), #string list
-						T.ROLE: self.parse_roles(), # role object list
-						T.DATERANGE: self.parse_daterange(),  #string * string
-						T.REACT: self.parse_hasreact(),  #string list
-						T.CUSTOM_REACT: self.parse_hasreact_custom()} #id list
+		self.daterange = self.parse_daterange()
 
-	def construct_sql_query(self):
-		pass
+		#filters : (T enum -> 'a' list) dictionary
+		self.filters = {T.CHANNEL : self.parse_channels(),  			# channel object list
+						T.USER: self.parse_users(), 					# user object list
+						T.KEYWORD: self.parse_keywords(), 				# string list
+						T.ROLE: self.parse_roles(), 					# role object list
+						T.REACT: self.parse_hasreact() + self.parse_hasreact_custom(), 	# string/id list
+						T.PINGS : self.parse_pings(), 					# user object list
+						T.DATE_RANGE: self.parse_daterange(), 			# string * string tuple option
+						T.IS_PINNED: self.parse_is_pinned(),  			# bool option
+						T.HAS_IMAGE: self.parse_has_image(),  			# bool option
+						T.EXCLUDE_BOTS: self.parse_exclude_bots(),		# bool
+						T.CASE_SENSITIVE: self.parse_case_sensitive()} 	# bool
+
+		self.filter_strings = {T.CHANNEL : """ messages.channel_ID = ? """, # channel.id
+					  T.USER : """ messages.author_ID = ? """,  # user.id
+					  T.KEYWORD : """ messages.content LIKE '%'||?||'%' """, # just the string
+					  T.KEYWORD_INSENSITIVE : """ lower(messages.content) LIKE '%'||?||'%' """, # just the string
+					  T.ROLE : """ users.roles LIKE '%'||?||'%' """, # role.id
+					  T.REACT : """ messages.reacts LIKE '%'||?||'%'  """, #just the string
+					  T.PINGS : """ messages.user_pings LIKE '%'||?||'%' """, # user.id
+					  T.DATE_RANGE : """ ? < messages.timestamp AND messages.timestamp < ? """, # pass in the two elements of tuple separately!
+					  T.IS_PINNED : """ messages.pinned = ? """, # 0 or 1
+					  T.HAS_IMAGE : """ messages.has_attachments = ? """, # 0 or 1
+					  T.EXCLUDE_BOTS : """ messages.author_ID NOT IN ? """  # bot IDs, formatted "(1, 2, 3, ...)"
+					  }
+
+		self.bots_string = '(' + ','.join(["'" + x + "'" for x in open('bots.csv').read().split(',')]) + ')'
+
+	def pretty_string(self): 
+		s = ''
+		for x in self.filters:
+			if type(self.filters[x]) == list:
+				s += str(x) + '\t:\t' + ", ".join([str(y) for y in self.filters[x]]) + '\n'
+			else:
+				s += str(x) + '\t:\t' + str(self.filters[x]) + '\n'
+		return s
+
+	# returns filter string, and args. kindly ignore the extreme inelegance. 
+	# sql_filter_string : returns a string consisting of the stuff after 'WHERE' in the sql query. Does not include 'WHERE'
+	# 							  and the arguments list that goes with the query. 
+	def sql_filter_string(self):
+		where = ''
+		args = []
+		for filter_type in (T.CHANNEL, T.USER, T.ROLE, T.PINGS):
+			if len(self.filters[filter_type]) == 0:
+				continue
+			where += " AND (" + "OR".join([self.filter_strings[filter_type] for x in self.filters[filter_type]]) + ")"
+			args += [x.id for x in self.filters[filter_type]]
+
+		if len(self.filters[T.KEYWORD]) != 0:
+			if self.filters[T.CASE_SENSITIVE]:
+				where += " AND (" + "OR".join([self.filter_strings[T.KEYWORD] for x in self.filters[T.KEYWORD]]) + ")"
+				args += self.filters[T.KEYWORD]
+			else:
+				where += " AND (" + "OR".join([self.filter_strings[T.KEYWORD_INSENSITIVE] for x in self.filters[T.KEYWORD]]) + ")"
+				args += [x.lower() for x in self.filters[T.KEYWORD]]
+
+		if len(self.filters[T.REACT]) != 0:
+			where += " AND (" + "OR".join([self.filter_strings[T.REACT] for x in self.filters[T.REACT]]) + ")"
+			args += self.filters[T.REACT]
+
+		if self.filters[T.DATE_RANGE] != None: 
+			where += " AND (" + self.filter_strings[T.DATE_RANGE] + ")"
+			args += [self.filters[T.DATE_RANGE][0], self.filters[T.DATE_RANGE][1]]
+
+		for filter_type in (T.IS_PINNED, T.HAS_IMAGE):
+			if self.filters[filter_type] != None: 
+				where += " AND (" + self.filter_strings[filter_type] + ")"
+				args.append(1 if self.filters[filter_type] else 0)
+
+		if self.filters[T.EXCLUDE_BOTS]:
+			where += self.filter_strings[T.EXCLUDE_BOTS]
+			args.append(self.bots_string)
+
+		return (where, args)			
+
+	# sql_joins_strings : given the rest of the stuff in the query, determines what tables need to be included. 
+	#						currently really hacky D:  -- needs to be called after parse_split and sql_filter_string are called,
+	# 						and self.filter_str and self.split are assigned. 
+	def sql_joins_string(self):
+		rest = self.filter_str + " " + self.split[1]
+		inner_join = ''
+		if "channels." in rest:
+			inner_join += " INNER JOIN channels ON channels.channel_ID = messages.channel_ID "
+		if "users." in rest: 
+			inner_join += " INNER JOIN users ON users.user_ID = messages.author_ID "
+		return inner_join 
 
 	def parse_channels(self):
 		conn = sqlite3.connect("information.db")
@@ -75,6 +168,7 @@ class Query:
 
 		channels += [self.client.get_channel(c) for c in filter((lambda x : str(x) in self.message.content), channel_info.values())]
 		return list(set(channels))
+
 	def parse_roles(self):
 		conn = sqlite3.connect("information.db")
 		c = conn.cursor()
@@ -110,41 +204,60 @@ class Query:
 		users += [self.client.get_user(c) for c in filter((lambda x : str(x) in self.message.content), user_info.values())]
 		return list(set(users))
 	def parse_keywords(self): 
-		keywords = re.findall('keyword:`(?P<ch>.*?)`', self.message.content)
+		inits = re.findall('keyword:`(?P<ch>.*?)`', self.message.content)
+
+		# rip how discord deals with emoji and backtick delimiters D;
+		f = open('emoji_map.json')
+		d = json.load(f)
+		keywords = []
+		for keyword in inits: 
+			for poss in d.keys():
+				if ":"+poss+":" in keyword:
+					keywords.append(keyword.replace(":"+poss+":", d[poss]))
 		return keywords
 
+	def parse_pings(self):
+		conn = sqlite3.connect("information.db")
+		c = conn.cursor()
+		c.execute('SELECT username, user_ID FROM users WHERE guild_ID=?', (self.message.guild.id,))
+		user_info = dict(c.fetchall())
+
+		user_names =  re.findall('pings:`@?(?P<ch>.*?)`', self.message.content)
+		if len(set(user_names) - set(user_info.keys())) > 0:
+			raise InvalidQuery('invalid user ping(s): '+ str(set(user_names) - set(user_info.keys())))
+		pings = [self.client.get_user(user_info[name]) for name in user_names]
+		if None in pings: 
+			raise InvalidQuery('invalid user ping(s)')
+		return list(set(pings))
 	def parse_daterange(self):
 		daterange = re.findall('date-range:`(?P<ch>.*?)`', self.message.content)
 		if len(daterange) == 0: return None 
 		elif len(daterange) > 1: raise InvalidQuery('multiple date ranges specified')
 		else:
-			ends = daterange[0].split(',')
+			ends = daterange[0].split(' -- ')
 			if len(ends) != 2: raise InvalidQuery('must specify two dates for date range')
 			if all([re.match('^\d{4}-\d\d-\d\d( \d\d)*(:\d\d)*(:\d\d)*$', x) for x in ends]):
 				return (ends[0], ends[1])
-			else: raise InvalidQuery('dates are poorly formatted: must be YYYY-MM-DD[ HH:mm:SS], (hours/mins/seconds optional). Example: date-time:`2020-01-01,2020-05-01 23:59:59`')
-
+			else: raise InvalidQuery('dates are poorly formatted: must be YYYY-MM-DD[ HH:mm:SS], (hours/mins/seconds optional). Example: date-time:`2020-01-01 -- 2020-05-01 23:59:59`')
 	def parse_hasreact_custom(self):
 		hasreacts = re.findall('has-custom-react:`#?(?P<ch>.*?)`', self.message.content)
 		custom_reacts = []
+		conn = sqlite3.connect('information.db')
 		for emoji in hasreacts:
 			if len(emoji) == 1: 
 				pass
 			else:
-				conn = sqlite3.connect('information.db')
 				c = conn.cursor()
 				c.execute('SELECT emoji_ID FROM emojis WHERE emoji_name=?', (emoji,))
 				x = c.fetchall()
-				if len(x) != 1: raise InvalidQuery('emoji not defined; please run !add_emoji [emoji] if it\'s a custom/nitro emote from a different server')
+				if len(x) != 1: raise InvalidQuery('emoji not defined. nitro emoji from other servers aren\'t yet supported')
 				else: 
 					custom_reacts.append(x[0][0])
+		conn.close()
 		return custom_reacts
-
 	def parse_hasreact(self):
 		emojis = re.findall('has-react:(?P<ch>.?)', self.message.content)
 		return emojis
-
-
 
 	def parse_exclude_bots(self):
 		if '--exclude-bots' in self.message.content:
@@ -161,7 +274,6 @@ class Query:
 			return True
 		else:
 			return None
-
 	def parse_is_pinned(self):
 		if '--pinned' in self.message.content:
 			return True
@@ -170,11 +282,52 @@ class Query:
 		else:
 			return None
 
+	def parse_split(self, default=T.USER):
+		split =  re.findall('split-by:`#?(?P<ch>.*?)`', self.message.content)
+		if len(split) == 0:
+			return default
+		d = {'channel' : (T.CHANNEL, 'channels.name', 'channel'),
+			 'user' : (T.USER, 'users.username', 'user')}
+		try:
+			return d[split[0]]
+		except KeyError:
+			raise InvalidQuery('invalid split-by: ' + str(split[0]))
+
 class PieChart(Query):
 	def __init__(self, message, client):
 		super().__init__(message, client)
-		self.type = "pie"
 		self.num_slices = 10
+
+		self.split = self.parse_split(default=(T.CHANNEL, 'channels.name', 'channel'))
+		print(self.split)
+
+		self.filter_str, self.args = self.sql_filter_string()
+		self.join_str = self.sql_joins_string()
+
+		self.query = self.construct_sql_query()
+
+	def construct_sql_query(self):
+		query = ''' SELECT count(messages.ID) as msgs, %s as %s FROM messages %s
+					WHERE 1=1 %s GROUP BY %s''' % (self.split[1], self.split[2], self.join_str, self.filter_str, self.split[1])
+		return query
+
+	def construct_piechart(self): 
+		plt.close('all')
+		conn = sqlite3.connect("information.db")
+		df = pd.read_sql_query(self.query, conn, params=self.args)
+		df = df.sort_values(by='msgs', ascending=False)
+
+		df = df.set_index(self.split[2])
+		ax = plt.subplot(111, aspect='equal')
+		ax.set_ylabel('')
+
+		df.plot(kind='pie', y='msgs', ax=ax, legend=False, startangle=90, \
+			counterclock=False, autopct='%1.0f%%', pctdistance=0.8)
+		plt.gca().axes.get_yaxis().set_visible(False)
+		plt.tight_layout()
+		plt.savefig('imageToSend.png')
+		conn.close()
+
 
 class TimeChart(Query):
 	def __init__(self, message, client):

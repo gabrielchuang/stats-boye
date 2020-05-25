@@ -19,39 +19,10 @@ cc = open('command_character.txt').read()[0]# command character
 
 banned_channels = open('banned_channels.csv').read().split(',')
 chart_commands = []
-admin_commands = ['add_ignored_channel', 'set_color', 'refresh_users', 'refresh_messages', 'clear_messages_table', 'refresh_channel', 'refresh_roles', 'refresh_emojis']
+admin_commands = ['add_ignored_channel', 'set_color', 'refresh_users', 'refresh_messages', 'clear_messages_table', 'refresh_channel', 'refresh_roles', 'refresh_emojis', 'add_bot']
 auth_admins = open('admins.csv').read().strip().split(',')
 
 print(auth_admins)
-
-
-
-'''
-occurrences of matthew saying 'bar' vs ezekiel saying 'bar' in bot-coms over time, between jan 1 and jan 30:
-!time --splitby user @matt @ezek --filter #bot-coms `bar` --date 1-1-2020 1-30-2020 --granularity month 
-!time --splitby user user:matt user:ezek --filter #bot-coms `bar` --date 1-1-2020 1-30-2020 --granularity month 
-!time --splitby user userid:12345 userid:12345 --filter #bot-coms `bar` --date 1-1-2020 1-30-2020 --granularity month 
-
-relative channel activity over time: gen vs finelit
-!time --splitby channel #gen #finelit --date 1-1-2020 1-30-2020
-
-weeb activity over time
-!time --filter @weebs 
-!time --filter role:weebs
-
-piechart - channels where 'ward' is said the most by ezek or jocel
-!pie --splitby channel --filter `ward` @ezek @octi 
-piechart - most common talkers in #gen
-!pie --splitby user --filter #gen 
-
-standard pie
-!pie --splitby channel --filter @whoever
-
-regex? 
-proportions # limit to people with > x msgs
-
-'''
-
 
 
 async def run_chart_command(message):
@@ -76,23 +47,29 @@ async def on_message(message): #currently very basic, just for testing (for now)
 			await message.add_reaction("😡")
 	elif any([(cc+x) in message.content for x in chart_commands]):
 		await run_chart_command(message)
-	elif "!parse_test" in message.content and "ezekiel" in str(message.author):
+
+	elif "!parse_test" in message.content and "bot-testing" in str(message.channel):
 		try:
 			c = Query(message, client)
-
-#			c = Query.parse_channels(message, Query.get_channel_ids(message.guild), client)
-#			msg = 'channels: ' + ' '.join([x.name for x in c])
-#
-#			u = Query.parse_users(message, Query.get_user_ids(message.guild), client)
-#			msg += '\nusers: ' + ' '.join([x.name for x in u])
-#
-#			u = Query.parse_roles(message, Query.get_role_ids(message.guild), client)
-#			msg += '\nroles: ' + ' '.join([x.name for x in u])
-
-			await message.channel.send(str(c.filters))
+			await message.channel.send(str(c.pretty_string()))
 		except InvalidQuery as s:
 			await message.channel.send(s)
-
+	elif "!query_test" in message.content and "bot-testing" in str(message.channel):
+		try:
+			c = Query(message, client)
+			(where, args) = c.sql_filter_string()
+			inner_join = c.sql_joins_string()
+			await message.channel.send('`WHERE true' + str(where) + '`\n' +  str(args) + '\n' + str(inner_join))
+		except InvalidQuery as s:
+			await message.channel.send(s)
+	elif "!pt" in message.content and "bot-testing" in str(message.channel):
+		try:
+			c = PieChart(message, client)
+			await message.channel.send("```" + c.query + "```\n```" + str(c.args) + "```")
+			c.construct_piechart()
+			await message.channel.send("", file=discord.File('imageToSend.png'))
+		except InvalidQuery as s:
+			await message.channel.send(s)
 
 @client.event
 async def on_ready():
