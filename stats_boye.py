@@ -8,8 +8,10 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import re
-from queries_requests import *
-from refreshes_updates import *
+from queries import *
+from administrative import *
+from charts import *
+from miscellany import *
 
 token = open('token.txt').read()
 client = discord.Client()
@@ -18,10 +20,22 @@ plt.close('all')
 cc = open('command_character.txt').read()[0]# command character
 
 banned_channels = open('banned_channels.csv').read().split(',')
-chart_commands = []
-admin_commands = ['add_ignored_channel', 'set_color', 'refresh_users', 'refresh_messages', 'clear_messages_table', 'refresh_channel', 'refresh_roles', 'refresh_emojis', 'add_bot']
-auth_admins = open('admins.csv').read().strip().split(',')
 
+chart_commands = []
+admin_commands = ['add_ignored_channel', 'set_color', 'refresh_users', 'refresh_messages', 'clear_messages_table', 'refresh_channel', 'refresh_roles', 'refresh_emojis', 'add_bot', 'remove_bot', 'add_admin', 'remove_admin', 'sudo']
+misc_commands = ['set_my_color']
+
+
+'''
+conn = sqlite3.connect("information.db")
+c = conn.cursor()
+c.execute('SELECT user_ID FROM users WHERE privs=2')
+auth_admins = [x[0] for x in list(c.fetchall())]
+c.close()
+conn.close()
+'''
+
+auth_admins = open('admins.csv').read().strip().split(',')
 print(auth_admins)
 
 
@@ -43,7 +57,6 @@ async def on_message(message): #currently very basic, just for testing (for now)
 		if str(message.author.id) in auth_admins:
 			await run_admin_command(message, client)
 		else:
-			# invalid perms!
 			await message.add_reaction("😡")
 	elif any([(cc+x) in message.content for x in chart_commands]):
 		await run_chart_command(message)
@@ -67,9 +80,13 @@ async def on_message(message): #currently very basic, just for testing (for now)
 			c = PieChart(message, client)
 			await message.channel.send("```" + c.query + "```\n```" + str(c.args) + "```")
 			c.construct_piechart()
-			await message.channel.send("", file=discord.File('imageToSend.png'))
+			#await message.channel.send("", file=discord.File('imageToSend.png'))
+			c.create_embed()
+			await c.send()
 		except InvalidQuery as s:
 			await message.channel.send(s)
+	elif any([(cc+x) in message.content for x in misc_commands]):
+		await run_misc_command(message, client)
 
 @client.event
 async def on_ready():
