@@ -90,6 +90,7 @@ class Query:
 					  T.EXCLUDE_BOTS : """ users.privs != 1 """
 					  }
 
+
 	# returns filter string, and args. kindly ignore the extreme inelegance. 
 	# sql_filter_string : returns a string consisting of the stuff after 'WHERE' in the sql query. Does not include 'WHERE'
 	# 							  and the arguments list that goes with the query. 
@@ -194,15 +195,22 @@ class Query:
 		return list(set(users))
 	def parse_keywords(self): 
 		inits = re.findall('keyword:`(?P<ch>.*?)`', self.message.content)
+		print(inits)
+		print(self.message.content)
 
 		# rip how discord deals with emoji and backtick delimiters D;
 		f = open('emoji_map.json')
 		d = json.load(f)
 		keywords = []
 		for keyword in inits: 
+			found = False
 			for poss in d.keys():
 				if ":"+poss+":" in keyword:
 					keywords.append(keyword.replace(":"+poss+":", d[poss]))
+					found = True
+					break
+			if not found:
+				keywords.append(keyword)
 		return keywords
 
 	def parse_pings(self):
@@ -284,7 +292,21 @@ class Query:
 			raise InvalidQuery('invalid split-by: ' + str(split[0]))
 
 class AboutMe(Query):
-	pass
+	def __init__(self, message, client): 
+		super().init(message, client)
+
+		if len(self.filters[T.USER]) == 0:
+			self.filters[T.USER] = [message.author]
+
+		'''
+		total messages
+		avg messages per day
+		first message on server (day)
+		avg words per message
+		# pinned
+		# with images
+		# total reacts
+		'''
 
 class RandomQuote(Query):
 	pass

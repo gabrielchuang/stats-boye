@@ -64,7 +64,7 @@ async def on_message(message): #currently very basic, just for testing (for now)
 	elif "!parse_test" in message.content and "bot-testing" in str(message.channel):
 		try:
 			c = Query(message, client)
-			await message.channel.send(str(c.pretty_string()))
+			await message.channel.send(str(c.filters))
 		except InvalidQuery as s:
 			await message.channel.send(s)
 	elif "!query_test" in message.content and "bot-testing" in str(message.channel):
@@ -78,9 +78,31 @@ async def on_message(message): #currently very basic, just for testing (for now)
 	elif "!pt" in message.content and "bot-testing" in str(message.channel):
 		try:
 			c = PieChart(message, client)
-			await message.channel.send("```" + c.query + "```\n```" + str(c.args) + "```")
 			c.construct_piechart()
-			#await message.channel.send("", file=discord.File('imageToSend.png'))
+			c.create_embed()
+			await c.send()
+		except InvalidQuery as s:
+			await message.channel.send(s)
+	elif "!bt" in message.content and "bot-testing" in str(message.channel):
+		try:
+			c = BarChart(message, client)
+			c.construct_barchart()
+			c.create_embed()
+			await c.send()
+		except InvalidQuery as s:
+			await message.channel.send(s)
+	elif "!tt" in message.content and "bot-testing" in str(message.channel):
+		try:
+			c = TimeChart(message, client)
+			c.construct_timechart()
+			c.create_embed()
+			await c.send()
+		except InvalidQuery as s:
+			await message.channel.send(s)
+	elif "!wcd" in message.content and "bot-testing" in str(message.channel):
+		try:
+			c = WordCountDistribution(message, client)
+			c.construct_wordCountDistributionChart()
 			c.create_embed()
 			await c.send()
 		except InvalidQuery as s:

@@ -256,11 +256,16 @@ async def refresh_all_messages(guild):
 
 async def sudo(message):
 	query = re.findall('```(?P<ch>.*?)```', message.content)
+	print(query)
+	print(message.content)
 	conn = sqlite3.connect("information.db")
 	c = conn.cursor()
 	c.execute(query[0])
 
-	await message.channel.send(str(c.fetchall()))
+	f = str(c.fetchall())
+	print(f)
+
+	await message.channel.send(f[:1900] + "[...]")
 
 	conn.commit()
 	c.close()
