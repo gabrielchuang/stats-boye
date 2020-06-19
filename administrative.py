@@ -91,7 +91,8 @@ async def refresh_channels(guild):
 				c.execute('DELETE FROM channels WHERE channel_ID=?', (channel.id,))
 				c.execute('INSERT INTO channels VALUES(?,?,?,?)', (guild.id, channel.id, rows[0][2], channel.name))
 			else:
-				c.execute('INSERT INTO channels VALUES(?,?,?,?)', (guild.id, channel.id, "#202020", channel.name))
+				color = "#%06x" % random.randint(0, 0xFFFFFF)
+				c.execute('INSERT INTO channels VALUES(?,?,?,?)', (guild.id, channel.id, color, channel.name))
 			conn.commit()
 			c.close()
 	conn.close()
@@ -315,4 +316,5 @@ async def run_admin_command(message, client):
 		await message.add_reaction("📈")
 	else: 
 		await message.add_reaction("❌")
+	return success 
 

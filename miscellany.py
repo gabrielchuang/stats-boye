@@ -6,10 +6,13 @@ from administrative import *
 
 async def run_misc_command(message, client):
 	await message.add_reaction('⚙️')
+	
+	cc = open('command_character.txt').read()[0]# command character
 
-	if "set_my_color" in message.content:
+	if cc+"set_my_color" in message.content:
 		color = re.search('#[0-9a-fA-F]{6}', message.clean_content).group(0)
 		success = await change_user_color(message.author, color)
+	elif cc+'help'
 	else:
 		success = False
 

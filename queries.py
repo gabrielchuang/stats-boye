@@ -8,7 +8,6 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt 
 import json
 
-
 class InvalidQuery(Exception):
 	pass
 
@@ -48,6 +47,8 @@ usage:
 
 	split-by:`channel` or split-by:`user`
 '''
+
+
 
 class Query:
 
@@ -95,8 +96,8 @@ class Query:
 	# sql_filter_string : returns a string consisting of the stuff after 'WHERE' in the sql query. Does not include 'WHERE'
 	# 							  and the arguments list that goes with the query. 
 	def sql_filter_string(self):
-		where = ''
-		args = []
+		where = ' AND messages.guild_ID = ?'
+		args = [self.message.guild.id]
 		for filter_type in (T.CHANNEL, T.USER, T.ROLE, T.PINGS):
 			if len(self.filters[filter_type]) == 0:
 				continue
@@ -127,6 +128,8 @@ class Query:
 		if self.filters[T.EXCLUDE_BOTS]:
 			where += " AND " + self.filter_strings[T.EXCLUDE_BOTS]
 
+		print(where)
+
 		return (where, args)			
 
 	# sql_joins_strings : given the rest of the stuff in the query, determines what tables need to be included. 
@@ -138,7 +141,7 @@ class Query:
 		if "channels." in rest:
 			inner_join += " INNER JOIN channels ON channels.channel_ID = messages.channel_ID "
 		if "users." in rest: 
-			inner_join += " INNER JOIN users ON users.user_ID = messages.author_ID "
+			inner_join += " INNER JOIN users ON (users.user_ID = messages.author_ID and users.guild_ID = messages.guild_ID) "
 		return inner_join 
 
 	def parse_channels(self):
@@ -291,6 +294,16 @@ class Query:
 		except KeyError:
 			raise InvalidQuery('invalid split-by: ' + str(split[0]))
 
+	def pretty_filter_string(self): 
+		s = ''
+		for x in self.filters.keys():
+			if type(self.filters[x]) == list:
+				if len(self.filters[x]) != 0:
+					s += str(x) + ": " + ", ".join([str(y) for y in self.filters[x]]) + "\n"
+			elif self.filters[x] != None: 
+				s += str(x) + ": " + str(self.filters[x]) + "\n"
+		return s
+
 class AboutMe(Query):
 	def __init__(self, message, client): 
 		super().init(message, client)
@@ -312,12 +325,6 @@ class RandomQuote(Query):
 	pass
 
 
-'''
-
-!pie : slices are people, channels
-!time : slices are people, keyword, channel, role
-
-!bar : slices are people
 
 
-'''
+
