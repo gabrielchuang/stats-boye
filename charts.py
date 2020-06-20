@@ -22,12 +22,12 @@ class Chart(Query):
 
 	def create_embed(self):
 		if self.verbose:
-			embed=discord.Embed(title=self.type + " chart", description=self.message.clean_content, color=0x288D1)
+			embed=discord.Embed(title=self.type + " chart", description=self.message.clean_content, color=0x304FFE)
 			embed.add_field(name="filters", value=self.pretty_filter_string(), inline=False)
 			embed.add_field(name="SQL query", value=self.query, inline=False)
 			embed.add_field(name="SQL args", value=str(self.args), inline=False)
 		else:
-			embed = discord.Embed(color=0xff00ff)
+			embed = discord.Embed(color=0x304FFE)
 		embed.set_footer(text="requested by "+str(self.message.author))
 		file = discord.File(self.filename, filename=self.filename)
 		embed.set_image(url="attachment://"+self.filename)
@@ -44,12 +44,12 @@ class Chart(Query):
 		elif len(self.filters[T.USER]) > 0:
 			conn = sqlite3.connect('information.db')
 			c = conn.cursor()
-			c.execute(' SELECT color FROM users WHERE user_ID=?', (self.filters[T.USER][0].id,))
+			c.execute(' SELECT color FROM users WHERE user_ID=? and guild_ID=?', (self.filters[T.USER][0].id, self.message.guild.id))
 			colors = str(c.fetchall()[0][0])
 		elif len(self.filters[T.CHANNEL]) > 0:
 			conn = sqlite3.connect('information.db')
 			c = conn.cursor()
-			c.execute(' SELECT color FROM channels WHERE channel_ID=?', (self.filters[T.CHANNEL][0].id,))
+			c.execute(' SELECT color FROM channels WHERE channel_ID=? and guild_ID=?', (self.filters[T.CHANNEL][0].id, self.message.guild.id))
 			colors = str(c.fetchall()[0][0])
 		else:
 			colors = '#304FFE'
@@ -228,7 +228,7 @@ class BarChart(Chart):
 
 		colors = [self.get_a_color()]
 
-		df.plot(kind='bar', x=self.split[2], title='bar chart: ' + ','.join(self.filters[T.KEYWORD]), color=colors)
+		df.plot(kind='bar', x=self.split[2], color=colors)
 		plt.tight_layout()
 		plt.savefig(self.filename)
 		conn.close()

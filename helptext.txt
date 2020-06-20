@@ -1,0 +1,114 @@
+!pie -- a pie chart
+!bar -- a bar graph
+!time -- a time graph 
+(pretty self-explanatory, right?) 
+
+I am agnostic to order of arguments -- for example, "keyword:`hello` !bar" and "!bar keyword:`hello`"" are equivalent. 
+
+--verbose : shows more information. 
+
+----------
+
+`split-by` determines how the graph is sliced. For example, if you want a time graph of #general vs #questions, you would split-by:`channel`, whereas if you wanted a bar graph of the users who have said "lol" the most, you would split-by:`user`. 
+
+Currently, the only two options are `user` and `channel`. 
+```split-by:`<either user or channel>` ```
+
+----------
+
+```slices:<number> or slices:`<number>` ``` [pie charts only, default 15]
+```bars:<number> or bars:`<number>` ``` [bar charts only, default 10]
+```interval:`<either minute or date>` ``` [time graphs only, default date]
+if interval:`minute` is included, the time zone is EST. 
+
+----------
+
+You can filter any query to only include messages that fit certain criteria. 
+
+In general, filters will be ANDs of ORs. For example, "!time #general #questions @stats-boye" will include only messages that are from stats-boye AND were sent in (#general OR #questions).
+
+----------
+```channel:`general` OR #general OR 502682347309891587 ```
+----------
+```user:`stats-boye` OR @stats-boye OR 467359252718026752 ```
+----------
+``` ole:`Members` OR @Members OR 502683202025029641 ```
+----------
+```keyword:`hello there!` ```
+----------
+```date-range:`<date1> -- <date2>`. ```
+Dates can be in the format: `YYYY`, `YYYY-MM`, `YYYY-MM-DD`, `YYYY-MM-DD HH`, `YYYY-MM-DD HH:MM`. 
+All dates are stored in UCT. Intervals are inclusive on both ends.
+----------
+```pings:`stats-boye` ```
+----------
+```has-react::thinking: [for non-custom emoji] 
+has-custom-react:`eyes1` [for custom emoji]```
+----------
+Exclude users that have been designated as bots using the `!add-bot` command.
+```--exclude-bots ```
+Only include messages that do/don't have an attachment
+```--no-image OR --has-image```
+Only include messages that are/aren't pinned
+```--pinned OR --not-pinned```
+
+
+----------
+
+most (currently, all) of these commands are only available to ezekiel, so this is just for his easy reference.
+```
+!add-ignored-channel <channel> 
+!refresh_channels
+!set_color <channels> <users>
+!refresh_users
+!refresh_messages
+!refresh_channel
+!refresh_roles
+!refresh_emojis
+!add_bot <user>
+!remove_bot <user>
+!sudo <query, enclosed in triple backticks> 
+!add_bot_channel <channel>
+```
+----------
+
+stats-boye uses a consistent set of colors (as best as it can) across graphs for users, channels, and roles. 
+
+For example, the "ezekiel" slice in "!pie split-by:`user`" is the same color as the "ezekiel" line in "!time @ezekiel". 
+
+You can set your own color with `!set_my_color <color>`, where <color> is a hex code like #40FF60. 
+
+----------
+
+
+```
+!bar, !pie, !time
+bars:`20` OR bars:20
+slices:`20` OR slices:20
+interval:`date` or interval:`minute`
+
+--verbose 
+
+split-by:`user` or split-by:`channel`
+
+channel:`general` OR #general OR 502682347309891587 
+user:`stats-boye` OR @stats-boye OR 467359252718026752 
+role:`Members` OR @Members OR 502683202025029641 
+keyword:`hello there!` 
+date-range:`<date1> -- <date2>`
+		date format: `YYYY-MM-DD`, `YYYY-MM-DD HH:MM`
+pings:`stats-boye` 
+has-react:🤔 [for non-custom emoji] 
+has-custom-react:`eyes1` [for custom emoji]
+--exclude-bots 
+--no-image OR --has-image
+--pinned OR --not-pinned
+
+!help/!statshelp !basics !filters !admin !misc 
+!cheatsheet or !cs
+```
+
+----------
+!help/!statshelp  !basics  !filters  !admin  !misc   !cheatsheet/!cs
+
+

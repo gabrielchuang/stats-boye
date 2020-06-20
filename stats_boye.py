@@ -22,8 +22,8 @@ cc = open('command_character.txt').read()[0]# command character
 banned_channels = open('banned_channels.csv').read().split(',')
 
 chart_commands = ['bar', 'pie', 'time']
-admin_commands = ['add_ignored_channel', 'set_color', 'refresh_users', 'refresh_messages', 'clear_messages_table', 'refresh_channel', 'refresh_roles', 'refresh_emojis', 'add_bot', 'remove_bot', 'add_admin', 'remove_admin', 'sudo']
-misc_commands = ['set_my_color']
+admin_commands = ['add_ignored_channel', 'set_color', 'refresh_users', 'refresh_messages', 'clear_messages_table', 'refresh_channel', 'refresh_roles', 'refresh_emojis', 'add_bot', 'remove_bot', 'add_admin', 'remove_admin', 'sudo', 'add_bot_channel']
+misc_commands = ['set_my_color', 'basics', 'misc', 'admin', 'filters', 'cs', 'cheatsheet', 'help', 'statshelp']
 
 auth_admins = open('admins.csv').read().strip().split(',')
 print(auth_admins)
@@ -64,8 +64,10 @@ async def run_query(message, client):
 	return success 
 
 @client.event
-async def on_message(message): #currently very basic, just for testing (for now)
-	if "bot-testing" in str(message.channel) and message.author != message.guild.me:
+async def on_message(message):
+	bot_channels = open('bot-channels.csv').read().strip().split(',')
+
+	if str(message.channel.id) in bot_channels and message.author != message.guild.me:
 		if any([(cc+x) in message.content for x in admin_commands]):
 			if str(message.author.id) in auth_admins:
 				await run_admin_command(message, client)
@@ -81,9 +83,5 @@ async def on_ready():
 	print('Logged in as')
 	print(client.user.name)
 	print(client.user.id)
-
-	for server in client.guilds:
-		if "CMU" in str(server):
-			await refresh_channels(server)
 
 client.run(token)

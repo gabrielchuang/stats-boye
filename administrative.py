@@ -8,7 +8,6 @@ from queries import *
 cc = open('command_character.txt').read()[0]
 
 banned_channels = open('banned_channels.csv').read().split(',')
-admin_commands = ['add_ignored_channel', 'set_color', 'refresh_users', 'refresh_messages', 'clear_messages_table', 'refresh_channel']
 auth_admins = open('admins.csv').read().strip().split(',')
 
 
@@ -19,7 +18,7 @@ async def refresh_users(guild):
 	mems = []
 	c = conn.cursor()
 	for member in guild.members:
-		c.execute('SELECT privs, color FROM users WHERE user_ID=?', (member.id,))
+		c.execute('SELECT privs, color FROM users WHERE user_ID=? and guild_ID=?', (member.id, guild.id))
 		try:
 			privs, color = c.fetchall()[0]
 			print(color)
@@ -117,17 +116,18 @@ async def change_channel_color(channel, color):
 	return True
 
 # change_user_color : changes the color associated with a given user in the db. 
-async def change_user_color(user, color): 
+async def change_user_color(user, color, guild): 
 	conn = sqlite3.connect("information.db")
 	c = conn.cursor()
-	c.execute('SELECT * FROM users WHERE user_ID=?', (user.id,))
+	c.execute('SELECT * FROM users WHERE user_ID=? and guild_ID=?', (user.id, guild.id))
 	rows = c.fetchall()
 	print(rows[0])
 	if len(rows) == 0:
 		print("nonexistent user or i can't access it")
 		return False 
 	else:
-		c.execute('DELETE FROM users WHERE user_ID=?', (user.id,))
+		c.execute('DELETE FROM users WHERE user_ID=? and guild_ID=?', (user.id, guild.id))
+		conn.commit()
 		c.execute('INSERT INTO users VALUES(?,?,?,?,?,?)', (rows[0][0], rows[0][1], rows[0][2], rows[0][3], rows[0][4], color))
 		print("user " + user.name + "'s color has been updated to " + color)
 		conn.commit()
@@ -182,6 +182,7 @@ async def add_admin(user):
 
 # clear_all_entries : deletes all entries in `messages`. returns True. 
 async def clear_all_entries():
+	return 
 	conn = sqlite3.connect("information.db")
 	c = conn.cursor()
 	c.execute('DELETE FROM messages WHERE 1=1')
@@ -273,6 +274,17 @@ async def sudo(message):
 	conn.close()
 	return True
 
+async def add_bot_channels(channel):
+	bcs = open('bot-channels.csv')
+	bcs2 = bcs.read().split(',')
+	if str(channel.id) in bcs:
+		return False
+	bcs.close()
+	f = open('bot-channels.csv', 'a')
+	f.write(','+str(channel.id))
+	f.close()
+	return True
+
 async def run_admin_command(message, client):
 	await message.add_reaction('⚙️')
 	q = Query(message, client)
@@ -286,7 +298,7 @@ async def run_admin_command(message, client):
 	elif cc+"set_color" in message.content: 
 		color = re.search('#[0-9a-fA-F]{6}', message.clean_content).group(0)
 		success = all([await change_channel_color(x, color) for x in channels]) and len(channels) + len(users) > 0 \
-					and all([await change_user_color(x, color) for x in users])
+					and all([await change_user_color(x, color, message.guild) for x in users])
 	elif cc+"refresh_users" in message.content:
 		success = await refresh_users(message.guild)
 	elif cc+"refresh_channel" in message.content:
@@ -303,6 +315,8 @@ async def run_admin_command(message, client):
 		success = all([await change_priv(message.guild.get_member(x.id), 0) for x in message.mentions]) 
 	elif cc+"sudo" in message.content:
 		success = await sudo(message)
+	elif cc+"add_bot_channel" in message.content:
+		success = all([await add_bot_channel(channel) for channel in channels])
 	#elif cc+"add_admin" in message.content:
 	#	success = all([await change_priv(message.guild.get_member(x.id), 2) for x in message.mentions]) 
 	#elif cc+"remove_admin" in message.content:
