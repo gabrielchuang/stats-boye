@@ -1,6 +1,7 @@
 !pie -- a pie chart
 !bar -- a bar graph
 !time -- a time graph 
+!randomquote -- gives a random quote
 (pretty self-explanatory, right?) 
 
 I am agnostic to order of arguments -- for example, "keyword:`hello` !bar" and "!bar keyword:`hello`"" are equivalent. 
@@ -32,7 +33,7 @@ In general, filters will be ANDs of ORs. For example, "!time #general #questions
 ----------
 ```user:`stats-boye` OR @stats-boye OR 467359252718026752 ```
 ----------
-``` ole:`Members` OR @Members OR 502683202025029641 ```
+```role:`Members` OR @Members OR 502683202025029641 ```
 ----------
 ```keyword:`hello there!` ```
 ----------
@@ -82,7 +83,7 @@ You can set your own color with `!set_my_color <color>`, where <color> is a hex 
 
 
 ```
-!bar, !pie, !time
+!bar, !pie, !time, !randomquote
 bars:`20` OR bars:20
 slices:`20` OR slices:20
 interval:`date` or interval:`minute`
