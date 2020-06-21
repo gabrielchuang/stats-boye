@@ -29,7 +29,7 @@ async def refresh_users(guild):
 			privs = 0
 			color = "#%06x" % random.randint(0, 0xFFFFFF)
 		mems.append((member.id, member.name, ",".join([str(x.id) for x in member.roles]), guild.id, privs, color))
-	c.execute('DELETE FROM users WHERE guild_ID=?', (guild.id,))
+	c.execute('DELETE FROM users WHERE guild_ID=? and privs <> -1', (guild.id,))
 	c.executemany('INSERT INTO users VALUES(?,?,?,?,?,?)', mems)
 	conn.commit()
 	c.close()
