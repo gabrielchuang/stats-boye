@@ -146,8 +146,8 @@ class Query:
 	# sql_joins_strings : given the rest of the stuff in the query, determines what tables need to be included. 
 	#						currently really hacky D:  -- needs to be called after parse_split and sql_filter_string are called,
 	# 						and self.filter_str and self.split are assigned. 
-	def sql_joins_string(self):
-		rest = self.filter_str + " " + self.split[1]
+	def sql_joins_string(self, otherstuff=""):
+		rest = self.filter_str + " " + self.split[1] + " " + otherstuff
 		inner_join = ''
 		if "channels." in rest:
 			inner_join += " INNER JOIN channels ON channels.channel_ID = messages.channel_ID "
@@ -334,8 +334,33 @@ class AboutMe(Query):
 		'''
 
 class RandomQuote(Query):
-	pass
+	def __init__(self, message, client):
+		super().__init__(message, client)
 
+		self.split = self.parse_split(default=(None, '', '', ''))
+		self.filter_str, self.args = self.sql_filter_string()
+		self.join_str = self.sql_joins_string(otherstuff="users.username ")
+
+		query = '''SELECT clean_content, jump_url, users.username, timestamp FROM messages %s WHERE 1=1 %s ORDER BY RANDOM() LIMIT 1''' % (self.join_str, self.filter_str)
+		conn = sqlite3.connect("information.db")
+		c = conn.cursor()
+		c.execute(query, self.args)
+		randomquote = c.fetchall()
+
+		quote = randomquote[0][0]
+		jump_url = randomquote[0][1]
+		name = randomquote[0][2]
+		date = randomquote[0][3]
+
+		embed=discord.Embed(title="random quote!", color=0xEC407A)
+		embed.add_field(name=name, value=quote, inline=False)
+		embed.add_field(name=date, value=jump_url, inline=False)
+		embed.set_footer(text="requested by "+str(self.message.author))
+
+		self.embed = embed
+
+	async def send(self):
+		await self.message.channel.send(embed=self.embed)
 
 
 
