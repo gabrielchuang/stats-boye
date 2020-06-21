@@ -26,6 +26,9 @@ class T(Enum):
 	PINGS = 13
 	KEYWORD_INSENSITIVE = 14
 
+class ShadowUser():
+	def __init__(self, id):
+		self.id = id
 
 '''
 usage:
@@ -190,12 +193,13 @@ class Query:
 		user_names =  re.findall('user:`@?(?P<ch>.*?)`', self.message.content)
 		if len(set(user_names) - set(user_info.keys())) > 0:
 			raise InvalidQuery('invalid user(s): '+ str(set(user_names) - set(user_info.keys())))
-		users += [self.client.get_user(user_info[name]) for name in user_names]
-		if None in users: 
-			raise InvalidQuery('invalid user(s)')
 
-		users += [self.client.get_user(c) for c in filter((lambda x : str(x) in self.message.content), user_info.values())]
+		users += [ShadowUser(user_info[name]) for name in user_names]
+#		if None in users: 
+#			raise InvalidQuery('invalid user(s)')
+		users += [ShadowUser(c) for c in filter((lambda x : str(x) in self.message.content), user_info.values())]
 		return list(set(users))
+
 	def parse_keywords(self): 
 		inits = re.findall('keyword:`(?P<ch>.*?)`', self.message.content)
 		print(inits)
