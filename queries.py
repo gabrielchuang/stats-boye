@@ -29,6 +29,14 @@ class T(Enum):
 class ShadowUser():
 	def __init__(self, id):
 		self.id = id
+		conn = sqlite3.connect("information.db")
+		c = conn.cursor()
+		c.execute('SELECT username FROM users WHERE user_ID=?', (self.id,))
+		self.name = c.fetchall()[0][0]
+	def __eq__(self, other):
+		return self.id == other.id
+	def __hash__(self):
+		return hash(self.id)
 
 '''
 usage:
@@ -188,7 +196,7 @@ class Query:
 		c.execute('SELECT username, user_ID FROM users WHERE guild_ID=?', (self.message.guild.id,))
 		user_info = dict(c.fetchall())
 
-		users = self.message.mentions
+		users = [ShadowUser(x.id) for x in self.message.mentions]
 
 		user_names =  re.findall('user:`@?(?P<ch>.*?)`', self.message.content)
 		if len(set(user_names) - set(user_info.keys())) > 0:
