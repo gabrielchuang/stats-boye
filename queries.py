@@ -353,7 +353,7 @@ class RandomQuote(Query):
 		date = randomquote[0][3]
 
 		embed=discord.Embed(title="random quote!", color=0xEC407A)
-		embed.add_field(name=name, value=quote, inline=False)
+		embed.add_field(name=name, value=" > " + quote, inline=False)
 		embed.add_field(name=date, value=jump_url, inline=False)
 		embed.set_footer(text="requested by "+str(self.message.author))
 
