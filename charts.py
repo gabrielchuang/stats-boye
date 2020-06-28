@@ -42,12 +42,12 @@ class Chart(Query):
 		if len(self.filters[T.ROLE]) > 0:
 			colors = str(self.filters[T.ROLE][0].color)
 		elif len(self.filters[T.USER]) > 0:
-			conn = sqlite3.connect('information.db')
+			conn = sqlite3.connect(str(self.message.guild.id)+".db")
 			c = conn.cursor()
 			c.execute(' SELECT color FROM users WHERE user_ID=? and guild_ID=?', (self.filters[T.USER][0].id, self.message.guild.id))
 			colors = str(c.fetchall()[0][0])
 		elif len(self.filters[T.CHANNEL]) > 0:
-			conn = sqlite3.connect('information.db')
+			conn = sqlite3.connect(str(self.message.guild.id)+".db")
 			c = conn.cursor()
 			c.execute(' SELECT color FROM channels WHERE channel_ID=? and guild_ID=?', (self.filters[T.CHANNEL][0].id, self.message.guild.id))
 			colors = str(c.fetchall()[0][0])
