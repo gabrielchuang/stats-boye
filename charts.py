@@ -83,7 +83,7 @@ class PieChart(Chart):
 
 	def construct_piechart(self): 
 		plt.close('all')
-		conn = sqlite3.connect("information.db")
+		conn = sqlite3.connect(str(self.message.guild.id)+".db")
 		df = pd.read_sql_query(self.query, conn, params=self.args)
 		df = df.sort_values(by='msgs', ascending=False)
 
@@ -149,7 +149,7 @@ class TimeChart(Chart):
 
 		print(self.query)
 
-		conn = sqlite3.connect("information.db")
+		conn = sqlite3.connect(str(self.message.guild.id)+".db")
 
 		ax = plt.subplot(111)
 		ax.set_ylabel('msgs')
@@ -211,7 +211,7 @@ class BarChart(Chart):
 
 	def construct_barchart(self): 
 		plt.close('all')
-		conn = sqlite3.connect("information.db")
+		conn = sqlite3.connect(str(self.message.guild.id)+".db")
 		
 		print(self.query)
 		print(self.args)
@@ -252,7 +252,7 @@ class WordCountDistribution(Chart):
 		plt.close('all')
 
 
-		conn = sqlite3.connect("information.db")
+		conn = sqlite3.connect(str(self.message.guild.id)+".db")
 		df = pd.read_sql_query(self.query, conn, params=self.args)
 		df = df.sort_values(by='words')
 

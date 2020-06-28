@@ -27,9 +27,9 @@ class T(Enum):
 	KEYWORD_INSENSITIVE = 14
 
 class ShadowUser():
-	def __init__(self, id):
+	def __init__(self, id, guild):
 		self.id = id
-		conn = sqlite3.connect("information.db")
+		conn = sqlite3.connect(str(guild.id)+".db")
 		c = conn.cursor()
 		c.execute('SELECT username FROM users WHERE user_ID=?', (self.id,))
 		self.name = c.fetchall()[0][0]
@@ -156,7 +156,7 @@ class Query:
 		return inner_join 
 
 	def parse_channels(self):
-		conn = sqlite3.connect("information.db")
+		conn = sqlite3.connect(str(self.message.guild.id)+".db")
 		c = conn.cursor()
 		c.execute('SELECT name, channel_ID  FROM channels WHERE guild_ID=?', (self.message.guild.id,))
 		channel_info =  dict(c.fetchall())
@@ -174,7 +174,7 @@ class Query:
 		return list(set(channels))
 
 	def parse_roles(self):
-		conn = sqlite3.connect("information.db")
+		conn = sqlite3.connect(str(self.message.guild.id)+".db")
 		c = conn.cursor()
 		c.execute('SELECT name, role_ID  FROM roles WHERE guild_ID=?', (self.message.guild.id,))
 		role_info = dict(c.fetchall())
@@ -191,21 +191,21 @@ class Query:
 		roles += [self.message.guild.get_role(c) for c in filter((lambda x : str(x) in self.message.content), role_info.values())]
 		return list(set(roles))
 	def parse_users(self):
-		conn = sqlite3.connect("information.db")
+		conn = sqlite3.connect(str(self.message.guild.id)+".db")
 		c = conn.cursor()
 		c.execute('SELECT username, user_ID FROM users WHERE guild_ID=?', (self.message.guild.id,))
 		user_info = dict(c.fetchall())
 
-		users = [ShadowUser(x.id) for x in self.message.mentions]
+		users = [ShadowUser(x.id, self.message.guild) for x in self.message.mentions]
 
 		user_names =  re.findall('user:`@?(?P<ch>.*?)`', self.message.content)
 		if len(set(user_names) - set(user_info.keys())) > 0:
 			raise InvalidQuery('invalid user(s): '+ str(set(user_names) - set(user_info.keys())))
 
-		users += [ShadowUser(user_info[name]) for name in user_names]
+		users += [ShadowUser(user_info[name], self.message.guild) for name in user_names]
 #		if None in users: 
 #			raise InvalidQuery('invalid user(s)')
-		users += [ShadowUser(c) for c in filter((lambda x : str(x) in self.message.content), user_info.values())]
+		users += [ShadowUser(c, self.message.guild) for c in filter((lambda x : str(x) in self.message.content), user_info.values())]
 		return list(set(users))
 
 	def parse_keywords(self): 
@@ -229,7 +229,7 @@ class Query:
 		return keywords
 
 	def parse_pings(self):
-		conn = sqlite3.connect("information.db")
+		conn = sqlite3.connect(str(self.message.guild.id)+".db")
 		c = conn.cursor()
 		c.execute('SELECT username, user_ID FROM users WHERE guild_ID=?', (self.message.guild.id,))
 		user_info = dict(c.fetchall())
@@ -254,7 +254,7 @@ class Query:
 	def parse_hasreact_custom(self):
 		hasreacts = re.findall('has-custom-react:`#?(?P<ch>.*?)`', self.message.content)
 		custom_reacts = []
-		conn = sqlite3.connect('information.db')
+		conn = sqlite3.connect(str(self.message.guild.id)+".db")
 		for emoji in hasreacts:
 			if len(emoji) == 1: 
 				pass
@@ -342,7 +342,7 @@ class RandomQuote(Query):
 		self.join_str = self.sql_joins_string(otherstuff="users.username ")
 
 		query = '''SELECT clean_content, jump_url, users.username, timestamp FROM messages %s WHERE 1=1 %s ORDER BY RANDOM() LIMIT 1''' % (self.join_str, self.filter_str)
-		conn = sqlite3.connect("information.db")
+		conn = sqlite3.connect(str(self.message.guild.id)+".db")
 		c = conn.cursor()
 		c.execute(query, self.args)
 		randomquote = c.fetchall()

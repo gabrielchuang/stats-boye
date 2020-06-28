@@ -14,7 +14,7 @@ auth_admins = open('admins.csv').read().strip().split(',')
 # refresh_users : clears out the users table for the given guild and rebuilds it from scratch. 
 # 	returns True
 async def refresh_users(guild): 
-	conn = sqlite3.connect("information.db")
+	conn = sqlite3.connect(str(guild.id)+".db")
 	mems = []
 	c = conn.cursor()
 	for member in guild.members:
@@ -40,7 +40,7 @@ async def refresh_users(guild):
 # refresh_roles : clears out the roles table for the given guild and rebuilds it from scratch. 
 # 	returns True
 async def refresh_roles(guild):
-	conn = sqlite3.connect("information.db")
+	conn = sqlite3.connect(str(guild.id)+".db")
 	c = conn.cursor()
 	c.execute('DELETE FROM roles WHERE guild_ID=?', (guild.id,))
 	conn.commit()
@@ -59,7 +59,7 @@ async def refresh_roles(guild):
 # refresh_emoji : clears out the roles table for the given guild and rebuilds it from scratch. 
 # 	returns True
 async def refresh_emojis(guild):
-	conn = sqlite3.connect("information.db")
+	conn = sqlite3.connect(str(guild.id)+".db")
 	c = conn.cursor()
 	c.execute('DELETE FROM emojis WHERE guild_ID=?', (guild.id,))
 	conn.commit()
@@ -79,7 +79,7 @@ async def refresh_emojis(guild):
 # 		new channels, etc. preserves color of existing channels. 
 #	returns True
 async def refresh_channels(guild):
-	conn = sqlite3.connect("information.db")
+	conn = sqlite3.connect(str(guild.id)+".db")
 	for channel in guild.channels:
 		if isinstance(channel, discord.channel.TextChannel) and channel.id not in banned_channels:
 			#look up the channel ID in db:
@@ -99,7 +99,7 @@ async def refresh_channels(guild):
 
 # change_channel_color : changes the color associated with a given channel in the db. 
 async def change_channel_color(channel, color): 
-	conn = sqlite3.connect("information.db")
+	conn = sqlite3.connect(str(channel.guild.id)+".db")
 	c = conn.cursor()
 	c.execute('SELECT * FROM channels WHERE channel_ID=?', (channel.id,))
 	rows = c.fetchall()
@@ -117,7 +117,7 @@ async def change_channel_color(channel, color):
 
 # change_user_color : changes the color associated with a given user in the db. 
 async def change_user_color(user, color, guild): 
-	conn = sqlite3.connect("information.db")
+	conn = sqlite3.connect(str(guild.id)+".db")
 	c = conn.cursor()
 	c.execute('SELECT * FROM users WHERE user_ID=? and guild_ID=?', (user.id, guild.id))
 	rows = c.fetchall()
@@ -145,7 +145,7 @@ async def add_banned_channel(channel):
 	f = open('banned_channels.csv', 'a')
 	f.write(','+str(channel.id))
 	f.close()
-	conn = sqlite3.connect("information.db")
+	conn = sqlite3.connect(str(channel.guild.id)+".db")
 	c = conn.cursor()
 	c.execute('DELETE FROM channels WHERE channel_ID=?', (channel.id,))
 	c.execute('DELETE FROM messages WHERE channel_ID=?', (channel.id,))
@@ -161,7 +161,7 @@ async def add_banned_channel(channel):
 # 	1 = bot
 # 	2 = admin
 async def change_priv(member, new_priv):
-	conn = sqlite3.connect("information.db")
+	conn = sqlite3.connect(str(member.guild.id)+".db")
 	c = conn.cursor()
 	c.execute('DELETE FROM users WHERE user_ID=? AND guild_ID=?', (member.id, member.guild.id))
 	c.execute('INSERT INTO users VALUES (?,?,?,?,?)', (member.id, member.name, ",".join([str(x.id) for x in member.roles]), member.guild.id, new_priv))
@@ -181,9 +181,10 @@ async def add_admin(user):
 	return True
 
 # clear_all_entries : deletes all entries in `messages`. returns True. 
+# currently broken. it's fine. 
 async def clear_all_entries():
 	return 
-	conn = sqlite3.connect("information.db")
+	conn = sqlite3.connect(str(guild.id)+".db")
 	c = conn.cursor()
 	c.execute('DELETE FROM messages WHERE 1=1')
 	conn.commit()
@@ -193,7 +194,7 @@ async def clear_all_entries():
 
 # get_most_recently_added : gets the most recent message in the channel. 
 async def get_most_recently_added(channel):
-	conn = sqlite3.connect("information.db")
+	conn = sqlite3.connect(str(channel.guild.id)+".db")
 	c = conn.cursor()
 	c.execute('SELECT * FROM messages WHERE channel_ID=? ORDER BY timestamp DESC limit 1', (channel.id,))
 	rows = c.fetchall()
@@ -208,10 +209,10 @@ async def refresh_messages(channel):
 	
 	if channel.id in banned_channels: 
 		return False
-	conn = sqlite3.connect("information.db")
+	conn = sqlite3.connect(str(channel.guild.id)+".db")
 	message_data = []
 	count = 0
-	async for message in channel.history(limit=400000):
+	async for message in channel.history(limit=10000000):
 		#if count % 100 == 0:
 		#	print(count)
 		if message.id == last_message_here:
@@ -260,7 +261,7 @@ async def sudo(message):
 	query = re.findall('```(?P<ch>.*?)```', message.content)
 	print(query)
 	print(message.content)
-	conn = sqlite3.connect("information.db")
+	conn = sqlite3.connect(str(message.guild.id)+".db")
 	c = conn.cursor()
 	c.execute(query[0])
 
@@ -285,44 +286,62 @@ async def add_bot_channels(channel):
 	f.close()
 	return True
 
+async def initialize_server(guild):
+	conn = sqlite3.connect(str(guild.id)+".db")
+	c = conn.cursor()
+	c.execute('''CREATE TABLE IF NOT EXISTS "channels" ("guild_ID" INTEGER, "channel_ID" INTEGER, "color" TEXT, "name" TEXT)''')
+	c.execute('''CREATE TABLE IF NOT EXISTS "emojis" ("emoji_ID" INTEGER, "guild_ID" INTEGER, "emoji_name" TEXT, "url" TEXT)''')
+	c.execute('''CREATE TABLE IF NOT EXISTS "emojis" ("emoji_ID" INTEGER, "guild_ID" INTEGER, "emoji_name" TEXT, "url" TEXT)''')
+	c.execute('''CREATE TABLE IF NOT EXISTS "messages" ("ID" INTEGER,"guild_ID" INTEGER, "author_ID" INTEGER, "channel_ID" INTEGER, "timestamp" TEXT, "content" TEXT, "clean_content" TEXT, "jump_url" TEXT, "pinned" INTEGER, "has_attachments" TEXT, "reacts" TEXT, "num_reacts" TEXT, "user_pings" TEXT, "role_pings" TEXT, "channel_pings" INTEGER)''')
+	c.execute('''CREATE TABLE IF NOT EXISTS "roles" ( "role_ID" INTEGER, "guild_ID" INTEGER, "name" TEXT, "color" TEXT)''')
+	c.execute('''CREATE TABLE "users" ("user_ID" INTEGER, "username" TEXT, "roles" TEXT, "guild_ID" INTEGER, "privs" INTEGER, "color" TEXT)''')
+	conn.commit()
+	c.close()
+	conn.close()
+	return True
+
 async def run_admin_command(message, client):
 	await message.add_reaction('⚙️')
-	q = Query(message, client)
-	channels = q.filters[T.CHANNEL]
-	users = q.filters[T.USER]
 
-	if cc+"add_ignored_channel" in message.content:
-		success = all([await add_banned_channel(x) for x in channels]) and len(channels) > 0
-	elif cc+"refresh_channels" in message.content:
-		success = await refresh_channels(message.guild)
-	elif cc+"set_color" in message.content: 
-		color = re.search('#[0-9a-fA-F]{6}', message.clean_content).group(0)
-		success = all([await change_channel_color(x, color) for x in channels]) and len(channels) + len(users) > 0 \
-					and all([await change_user_color(x, color, message.guild) for x in users])
-	elif cc+"refresh_users" in message.content:
-		success = await refresh_users(message.guild)
-	elif cc+"refresh_channel" in message.content:
-		success = all([await refresh_messages(x) >= 0 for x in channels]) and len(channels) > 0
-	elif cc+"refresh_messages" in message.content:
-		success = await refresh_all_messages(message.guild)
-	elif cc+"refresh_roles" in message.content:
-		success = await refresh_roles(message.guild)
-	elif cc+"refresh_emojis" in message.content:
-		success = await refresh_emojis(message.guild)
-	elif cc+"add_bot" in message.content:
-		success = all([await change_priv(message.guild.get_member(x.id), 1) for x in message.mentions]) 
-	elif cc+"remove_bot" in message.content:
-		success = all([await change_priv(message.guild.get_member(x.id), 0) for x in message.mentions]) 
-	elif cc+"sudo" in message.content:
-		success = await sudo(message)
-	elif cc+"add_bot_channel" in message.content:
-		success = all([await add_bot_channel(channel) for channel in channels])
-	#elif cc+"add_admin" in message.content:
-	#	success = all([await change_priv(message.guild.get_member(x.id), 2) for x in message.mentions]) 
-	#elif cc+"remove_admin" in message.content:
-	#	success = all([await change_priv(message.guild.get_member(x.id), 0) for x in message.mentions]) 
+	if cc+"initialize_server" in message.content:
+		success = await initialize_server(message.guild)
 	else:
-		success = False
+		q = Query(message, client)
+		channels = q.filters[T.CHANNEL]
+		users = q.filters[T.USER]
+
+		if cc+"add_ignored_channel" in message.content:
+			success = all([await add_banned_channel(x) for x in channels]) and len(channels) > 0
+		elif cc+"refresh_channels" in message.content:
+			success = await refresh_channels(message.guild)
+		elif cc+"set_color" in message.content: 
+			color = re.search('#[0-9a-fA-F]{6}', message.clean_content).group(0)
+			success = all([await change_channel_color(x, color) for x in channels]) and len(channels) + len(users) > 0 \
+						and all([await change_user_color(x, color, message.guild) for x in users])
+		elif cc+"refresh_users" in message.content:
+			success = await refresh_users(message.guild)
+		elif cc+"refresh_channel" in message.content:
+			success = all([await refresh_messages(x) >= 0 for x in channels]) and len(channels) > 0
+		elif cc+"refresh_messages" in message.content:
+			success = await refresh_all_messages(message.guild)
+		elif cc+"refresh_roles" in message.content:
+			success = await refresh_roles(message.guild)
+		elif cc+"refresh_emojis" in message.content:
+			success = await refresh_emojis(message.guild)
+		elif cc+"add_bot" in message.content:
+			success = all([await change_priv(message.guild.get_member(x.id), 1) for x in message.mentions]) 
+		elif cc+"remove_bot" in message.content:
+			success = all([await change_priv(message.guild.get_member(x.id), 0) for x in message.mentions]) 
+		elif cc+"sudo" in message.content:
+			success = await sudo(message)
+		elif cc+"add_bot_channel" in message.content:
+			success = all([await add_bot_channel(channel) for channel in channels])
+		#elif cc+"add_admin" in message.content:
+		#	success = all([await change_priv(message.guild.get_member(x.id), 2) for x in message.mentions]) 
+		#elif cc+"remove_admin" in message.content:
+		#	success = all([await change_priv(message.guild.get_member(x.id), 0) for x in message.mentions]) 
+		else:
+			success = False
 
 	await message.remove_reaction('⚙️', message.guild.me)
 
