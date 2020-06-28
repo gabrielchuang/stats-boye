@@ -164,7 +164,7 @@ async def change_priv(member, new_priv):
 	conn = sqlite3.connect(str(member.guild.id)+".db")
 	c = conn.cursor()
 	c.execute('DELETE FROM users WHERE user_ID=? AND guild_ID=?', (member.id, member.guild.id))
-	c.execute('INSERT INTO users VALUES (?,?,?,?,?)', (member.id, member.name, ",".join([str(x.id) for x in member.roles]), member.guild.id, new_priv))
+	c.execute('INSERT INTO users VALUES (?,?,?,?,?,?)', (member.id, member.name, ",".join([str(x.id) for x in member.roles]), member.guild.id, new_priv, "#%06x" % random.randint(0, 0xFFFFFF)))
 	conn.commit()
 	c.close()
 	conn.close()
