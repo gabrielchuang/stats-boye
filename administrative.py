@@ -212,9 +212,10 @@ async def refresh_messages(channel):
 	conn = sqlite3.connect(str(channel.guild.id)+".db")
 	message_data = []
 	count = 0
+	c = conn.cursor()
+	granularity = 100000
+
 	async for message in channel.history(limit=10000000):
-		#if count % 100 == 0:
-		#	print(count)
 		if message.id == last_message_here:
 			break 
 
@@ -233,8 +234,11 @@ async def refresh_messages(channel):
 				timestamp, message.content, \
 				message.clean_content, message.jump_url, is_pinned, has_attachments, reacts, \
 				num_reacts, mentions, role_mentions, channel_mentions))
-
-	c = conn.cursor()
+		if count % granularity == 0:
+			print(count)
+			c.executemany('INSERT INTO messages VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', message_data)
+			conn.commit()
+			message_data = []
 	c.executemany('INSERT INTO messages VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', message_data)
 	conn.commit()
 	c.close()

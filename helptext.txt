@@ -70,6 +70,8 @@ most (currently, all) of these commands are only available to ezekiel, so this i
 !remove_bot <user>
 !sudo <query, enclosed in triple backticks> 
 !add_bot_channel <channel>
+!initialize_server
+
 ```
 ----------
 
