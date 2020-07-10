@@ -21,7 +21,7 @@ cc = open('command_character.txt').read()[0]# command character
 
 banned_channels = open('banned_channels.csv').read().split(',')
 
-chart_commands = ['bar', 'pie', 'time', 'randomquote', 'about', 'aboutme']
+chart_commands = ['bar', 'pie', 'time', 'randomquote', 'rq', 'about', 'aboutme']
 admin_commands = ['add_ignored_channel', 'set_color', 'refresh_users', 'refresh_messages', 'clear_messages_table', 'refresh_channel', 'refresh_roles', 'refresh_emojis', 'add_bot', 'remove_bot', 'add_admin', 'remove_admin', 'sudo', 'add_bot_channel', 'initialize_server']
 misc_commands = ['set_my_color', 'basics', 'misc', 'admin', 'filters', 'cs', 'cheatsheet', 'help', 'statshelp']
 
@@ -47,7 +47,7 @@ async def run_query(message, client):
 			c.construct_timechart()
 			c.create_embed()
 			await c.send()
-		elif cc+"randomquote" in message.content:
+		elif cc+"randomquote" in message.content or cc+"rq" in message.content:
 			c = RandomQuote(message, client)
 			await c.send()
 		elif cc+"about" in message.content:
