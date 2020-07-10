@@ -453,23 +453,43 @@ class RandomQuote(Query):
 		self.filter_str, self.args = self.sql_filter_string()
 		self.join_str = self.sql_joins_string(otherstuff="users.username ")
 
-		query = '''SELECT clean_content, jump_url, users.username, timestamp FROM messages %s WHERE 1=1 %s ORDER BY RANDOM() LIMIT 1''' % (self.join_str, self.filter_str)
+		numquotes = self.parse_numquotes()
+		if numquotes == None:
+				embed=discord.Embed(title="randomquotes limited to 10 per query.", color=0xff0000)
+				self.embed = embed
+				return
+
+		query = '''SELECT clean_content, jump_url, users.username, timestamp FROM messages %s WHERE 1=1 %s ORDER BY RANDOM() LIMIT %d''' % (self.join_str, self.filter_str, numquotes)
 		conn = sqlite3.connect(str(self.message.guild.id)+".db")
 		c = conn.cursor()
 		c.execute(query, self.args)
-		randomquote = c.fetchall()
+		randomquotes = c.fetchall()
 
-		quote = randomquote[0][0]
-		jump_url = randomquote[0][1]
-		name = randomquote[0][2]
-		date = randomquote[0][3]
+		embed=discord.Embed(title="random quote(s)!", color=0xEC407A)
 
-		embed=discord.Embed(title="random quote!", color=0xEC407A)
-		embed.add_field(name=name, value=" > " + quote, inline=False)
-		embed.add_field(name=date, value=jump_url, inline=False)
+		print(numquotes)
+		print(randomquotes)
+
+		for quote in randomquotes:
+			print("hi")
+			text = quote[0]
+			jump_url = quote[1]
+			name = quote[2]
+			date = quote[3]
+
+			embed.add_field(name=name, value=" > " + text, inline=False)
+			embed.add_field(name=date, value=jump_url, inline=False)
 		embed.set_footer(text="requested by "+str(self.message.author))
 
 		self.embed = embed
+
+	def parse_numquotes(self):
+		numquotes = re.findall('num:?`(\d+)?`', self.message.content)
+		if len(numquotes) == 0:
+			return 1
+		elif int(numquotes[0]) > 10:
+			return None
+		return int(numquotes[0])
 
 	async def send(self):
 		await self.message.channel.send(embed=self.embed)

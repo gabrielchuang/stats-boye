@@ -1,7 +1,7 @@
 !pie -- a pie chart
 !bar -- a bar graph
 !time -- a time graph 
-!randomquote -- gives a random quote
+!randomquote/!rq -- gives a random quote
 !about/!aboutme -- gives some cool info! 
 
 I am agnostic to order of arguments -- for example, "keyword:`hello` !bar" and "!bar keyword:`hello`"" are equivalent. 
@@ -21,6 +21,7 @@ Currently, the only two options are `user` and `channel`.
 ```bars:<number> or bars:`<number>` ``` [bar charts only, default 10]
 ```interval:`<either minute or date>` ``` [time graphs only, default date]
 if interval:`minute` is included, the time zone is EST. 
+```num:`<some number from 1 to 10>` ``` [!randomquote only, default 10]
 
 ----------
 
