@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt 
 import json
+from datetime import datetime
 
 class InvalidQuery(Exception):
 	pass
@@ -316,22 +317,133 @@ class Query:
 				s += str(x) + ": " + str(self.filters[x]) + "\n"
 		return s
 
-class AboutMe(Query):
-	def __init__(self, message, client): 
-		super().init(message, client)
+	def titler(self):
+		if self.filters[T.USER] != []: 
+			title = ", ".join([x.name for x in self.filters[T.USER]])
+		elif self.filters[T.ROLE] != []:
+			title = ", ".join([x.name for x in self.filters[T.ROLE]])
+		else:
+			title = "messages"
 
-		if len(self.filters[T.USER]) == 0:
+		if self.filters[T.CHANNEL] != []:
+			title += " in " + ", ".join(["#"+x.name for x in self.filters[T.CHANNEL]])
+		return title
+
+	def get_a_color(self):
+		if len(self.filters[T.ROLE]) > 0:
+			colors = str(self.filters[T.ROLE][0].color)
+		elif len(self.filters[T.USER]) > 0:
+			conn = sqlite3.connect(str(self.message.guild.id)+".db")
+			c = conn.cursor()
+			c.execute(' SELECT color FROM users WHERE user_ID=? and guild_ID=?', (self.filters[T.USER][0].id, self.message.guild.id))
+			colors = str(c.fetchall()[0][0])
+		elif len(self.filters[T.CHANNEL]) > 0:
+			conn = sqlite3.connect(str(self.message.guild.id)+".db")
+			c = conn.cursor()
+			c.execute(' SELECT color FROM channels WHERE channel_ID=? and guild_ID=?', (self.filters[T.CHANNEL][0].id, self.message.guild.id))
+			colors = str(c.fetchall()[0][0])
+		else:
+			colors = '#304FFE'
+		return colors
+
+class About(Query):
+	def __init__(self, message, client): 
+		super().__init__(message, client)
+		cc = open('command_character.txt').read()[0] # command character
+
+		if cc+"aboutme" in message.content:
+			if self.filters[T.USER] != []:
+				embed=discord.Embed(title="use !about to use more filters. !aboutme is just for you! ", color=0xff0000)
+				self.embed = embed
+				return
 			self.filters[T.USER] = [message.author]
 
-		'''
-		total messages
-		avg messages per day
-		first message on server (day)
-		avg words per message
-		# pinned
-		# with images
-		# total reacts
-		'''
+		self.split = (None, '', '', '')
+		self.filter_str, self.args = self.sql_filter_string()
+		self.join_str = self.sql_joins_string()
+
+		conn = sqlite3.connect(str(self.message.guild.id)+".db")
+		c = conn.cursor() 
+
+		query_secondhalf = ''' FROM messages %s WHERE 1=1 %s ''' % (self.join_str, self.filter_str)
+
+		c.execute(''' SELECT COUNT(*) ''' + query_secondhalf, self.args)
+		total_messages = c.fetchall()[0][0]
+
+		c.execute(''' SELECT COUNT(*) ''' + query_secondhalf + " AND length(clean_content) - length(replace(clean_content, ' ', '')) = 0", self.args)
+		num_singleword_messages = c.fetchall()[0][0]
+
+		c.execute(''' SELECT COUNT(*) ''' + query_secondhalf + " AND pinned = 1", self.args)
+		num_pinned = c.fetchall()[0][0]
+
+		c.execute(''' SELECT COUNT(*) ''' + query_secondhalf + " AND has_attachments = 1", self.args)
+		num_images = c.fetchall()[0][0]
+
+		c.execute(''' SELECT timestamp, clean_content ''' + query_secondhalf + " AND clean_content != '' ORDER BY timestamp LIMIT 1", self.args)
+		first_msg = c.fetchall()[0]
+		days_elapsed = float((datetime.now() - datetime.strptime(first_msg[0][:10], '%Y-%m-%d')).days)
+
+		c.execute(''' SELECT SUM(length(clean_content) - length(replace(clean_content, ' ', '')) + 1) ''' + query_secondhalf, self.args)
+		total_words = c.fetchall()[0][0]
+
+		c.execute(''' SELECT GROUP_CONCAT(num_reacts||",") ''' + query_secondhalf, self.args)
+		reacts = c.fetchall()[0][0]
+		num_reacts = sum([int(x) if x != "" else 0 for x in reacts.split(',')])
+
+		c.execute(''' SELECT clean_content, COUNT(clean_content) AS freq ''' + query_secondhalf + ''' AND CLEAN_CONTENT != "" GROUP BY clean_content ORDER BY freq DESC LIMIT 1 ''', self.args)
+		most_common_msg = c.fetchall()[0]
+
+		print(self.filters[T.USER])
+
+		if len(self.filters[T.USER]) == 1:# and all([self.filters[x] == [] for x in set(self.filters.keys()) - set([T.USER])]):
+			whomst = self.filters[T.USER][0].name
+
+			p1 = '''%s has sent %d messages in total. Of these: 
+			- %d are pinned (%.2f%%)
+			- %d have attachments (%.2f%%)
+			- %d are only one word or emoji (%.2f%%)
+
+			Their first message was on %s. Since then, they have sent an average of %.2f messages per day. Their first message was:
+			> %s
+
+			In total, %s has sent %d words, for an average of %.1f words per message. 
+
+			There have been %d reacts on %s's messages, for an average of %.2f reacts per message.
+
+			Their most common non-empty message (%d instances) is:
+			> %s
+			''' % (whomst, total_messages, num_pinned, num_pinned/total_messages*100.0, num_images, num_images/total_messages*100.0, \
+				num_singleword_messages, num_singleword_messages/total_messages*100.0, first_msg[0][:11], total_messages/float(days_elapsed), \
+				first_msg[1], whomst, total_words, total_words/total_messages, num_reacts, whomst, num_reacts/float(total_messages), most_common_msg[1], most_common_msg[0])
+		else: 
+			p1 = '''There are %d messages in total that satisfy the filters. Of these: 
+			- %d are pinned (%.2f%%)
+			- %d have attachments (%.2f%%)
+			- %d are only one word or emoji (%.2f%%)
+
+			The first message was on %s. Since then, there have been an average of %.2f messages per day that satisfy the filters. The first message was:
+			> %s
+
+			In total, there have been %d words, for an average of %.1f words per message. 
+
+			There have been %d reacts, for an average of %.2f reacts per message.
+
+			The most common non-empty message (%d instances) is:
+			> %s
+			''' % (total_messages, num_pinned, num_pinned/total_messages*100.0, num_images, num_images/total_messages*100.0, \
+				num_singleword_messages, num_singleword_messages/total_messages*100.0, first_msg[0][:11], total_messages/float(days_elapsed), \
+				first_msg[1], total_words, total_words/float(total_messages), num_reacts, num_reacts/float(total_messages), most_common_msg[1], most_common_msg[0])
+
+		embed=discord.Embed(title="About "+self.titler(), color=int(self.get_a_color()[1:], 16))
+		embed.add_field(name="-", value=p1, inline=False)
+		embed.set_footer(text="requested by "+str(self.message.author))
+
+		self.embed = embed
+
+	async def send(self):
+		await self.message.channel.send(embed=self.embed)
+
+
 
 class RandomQuote(Query):
 	def __init__(self, message, client):

@@ -2,7 +2,7 @@
 !bar -- a bar graph
 !time -- a time graph 
 !randomquote -- gives a random quote
-(pretty self-explanatory, right?) 
+!about/!aboutme -- gives some cool info! 
 
 I am agnostic to order of arguments -- for example, "keyword:`hello` !bar" and "!bar keyword:`hello`"" are equivalent. 
 
@@ -85,7 +85,7 @@ You can set your own color with `!set_my_color <color>`, where <color> is a hex 
 
 
 ```
-!bar, !pie, !time, !randomquote
+!bar, !pie, !time, !randomquote, !about, !aboutme
 bars:`20` OR bars:20
 slices:`20` OR slices:20
 interval:`date` or interval:`minute`

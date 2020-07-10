@@ -239,6 +239,7 @@ async def refresh_messages(channel):
 			c.executemany('INSERT INTO messages VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', message_data)
 			conn.commit()
 			message_data = []
+
 	c.executemany('INSERT INTO messages VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', message_data)
 	conn.commit()
 	c.close()
