@@ -108,8 +108,8 @@ class Query:
 	# sql_filter_string : returns a string consisting of the stuff after 'WHERE' in the sql query. Does not include 'WHERE'
 	# 							  and the arguments list that goes with the query. 
 	def sql_filter_string(self):
-		where = ' AND messages.guild_ID = ?'
-		args = [self.message.guild.id]
+		where = ' '
+		args = []
 		for filter_type in (T.CHANNEL, T.USER, T.ROLE, T.PINGS):
 			if len(self.filters[filter_type]) == 0:
 				continue
@@ -442,7 +442,6 @@ class About(Query):
 
 	async def send(self):
 		await self.message.channel.send(embed=self.embed)
-
 
 
 class RandomQuote(Query):

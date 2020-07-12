@@ -21,7 +21,7 @@ cc = open('command_character.txt').read()[0]# command character
 
 banned_channels = open('banned_channels.csv').read().split(',')
 
-chart_commands = ['bar', 'pie', 'time', 'randomquote', 'rq', 'about', 'aboutme']
+chart_commands = ['bar', 'pie', 'time', 'randomquote', 'rq', 'about', 'aboutme', 'wordcloud', 'cloud']
 admin_commands = ['add_ignored_channel', 'set_color', 'refresh_users', 'refresh_messages', 'clear_messages_table', 'refresh_channel', 'refresh_roles', 'refresh_emojis', 'add_bot', 'remove_bot', 'add_admin', 'remove_admin', 'sudo', 'add_bot_channel', 'initialize_server']
 misc_commands = ['set_my_color', 'basics', 'misc', 'admin', 'filters', 'cs', 'cheatsheet', 'help', 'statshelp']
 
@@ -53,6 +53,10 @@ async def run_query(message, client):
 		elif cc+"about" in message.content:
 			c = About(message, client)
 			await c.send()
+		elif cc+"wordcloud" in message.content or cc+"cloud" in message.content :
+			c = MessageCloud(message, client)
+			c.create_embed()
+			await c.send()
 		success = True
 	except InvalidQuery as s:
 			await message.channel.send(s)
@@ -73,7 +77,7 @@ async def run_query(message, client):
 async def on_message(message):
 	bot_channels = open('bot-channels.csv').read().strip().split(',')
 
-	if str(message.channel.id) in bot_channels and message.author != message.guild.me:
+	if str(message.channel.id) in bot_channels and message.author != message.guild.me and str(message.channel) in ['bot-testing']:
 		if any([(cc+x) in message.content for x in admin_commands]):
 			if str(message.author.id) in auth_admins:
 				await run_admin_command(message, client)

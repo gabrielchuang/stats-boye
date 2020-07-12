@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import json
 import os
 from datetime import datetime, timedelta
+from wordcloud import WordCloud
 
 from queries import *
 
@@ -38,23 +39,6 @@ class Chart(Query):
 		await self.message.channel.send(file=self.file, embed=self.embed)
 		os.remove(self.filename)
 
-	def get_a_color(self):
-		if len(self.filters[T.ROLE]) > 0:
-			colors = str(self.filters[T.ROLE][0].color)
-		elif len(self.filters[T.USER]) > 0:
-			conn = sqlite3.connect(str(self.message.guild.id)+".db")
-			c = conn.cursor()
-			c.execute(' SELECT color FROM users WHERE user_ID=? and guild_ID=?', (self.filters[T.USER][0].id, self.message.guild.id))
-			colors = str(c.fetchall()[0][0])
-		elif len(self.filters[T.CHANNEL]) > 0:
-			conn = sqlite3.connect(str(self.message.guild.id)+".db")
-			c = conn.cursor()
-			c.execute(' SELECT color FROM channels WHERE channel_ID=? and guild_ID=?', (self.filters[T.CHANNEL][0].id, self.message.guild.id))
-			colors = str(c.fetchall()[0][0])
-		else:
-			colors = '#304FFE'
-		return colors
-
 class PieChart(Chart):
 	def __init__(self, message, client):
 		super().__init__(message, client)
@@ -74,7 +58,6 @@ class PieChart(Chart):
 			return 15
 		print(slices)
 		return int(slices[0])
-
 
 	def construct_sql_query(self):
 		query = ''' SELECT count(messages.ID) as msgs, %s as %s, %s.color FROM messages %s
@@ -110,7 +93,6 @@ class PieChart(Chart):
 		plt.tight_layout()
 		plt.savefig(self.filename)
 		conn.close()
-
 
 class TimeChart(Chart):
 	def __init__(self, message, client):
@@ -266,6 +248,25 @@ class WordCountDistribution(Chart):
 		plt.tight_layout()
 		plt.savefig(self.filename)
 		conn.close()
+
+class MessageCloud(Chart):
+	def __init__(self, message, client):
+		super().__init__(message, client)
+		self.type = "wordcloud"
+
+		self.split = (None, '', '', '')
+		self.filter_str, self.args = self.sql_filter_string()
+		self.join_str = self.sql_joins_string()
+
+		self.query = '''SELECT group_concat(" "||content||" ") from messages %s WHERE 1=1 %s ''' % (self.join_str, self.filter_str)
+
+		conn = sqlite3.connect(str(self.message.guild.id)+".db")
+		c = conn.cursor()
+		c.execute(self.query, self.args)
+		words = c.fetchall()[0][0]
+
+		wc = WordCloud().generate(words)
+		wc.to_file(self.filename)
 
 
 
