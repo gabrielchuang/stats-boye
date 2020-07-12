@@ -251,6 +251,7 @@ class WordCountDistribution(Chart):
 
 class MessageCloud(Chart):
 	def __init__(self, message, client):
+		return 
 		super().__init__(message, client)
 		self.type = "wordcloud"
 
@@ -264,6 +265,8 @@ class MessageCloud(Chart):
 		c = conn.cursor()
 		c.execute(self.query, self.args)
 		words = c.fetchall()[0][0]
+
+		print('hi123')
 
 		wc = WordCloud().generate(words)
 		wc.to_file(self.filename)
