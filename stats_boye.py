@@ -77,7 +77,7 @@ async def run_query(message, client):
 async def on_message(message):
 	bot_channels = open('bot-channels.csv').read().strip().split(',')
 
-	if str(message.channel.id) in bot_channels and message.author != message.guild.me and str(message.channel) in ['bot-testing']:
+	if str(message.channel.id) in bot_channels and message.author != message.guild.me:
 		if any([(cc+x) in message.content for x in admin_commands]):
 			if str(message.author.id) in auth_admins:
 				await run_admin_command(message, client)
