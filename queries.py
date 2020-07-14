@@ -470,13 +470,12 @@ class RandomQuote(Query):
 		print(randomquotes)
 
 		for quote in randomquotes:
-			print("hi")
 			text = quote[0]
 			jump_url = quote[1]
 			name = quote[2]
 			date = quote[3]
 
-			embed.add_field(name=name, value=" > " + text, inline=False)
+			embed.add_field(name=name, value=">>> " + text, inline=False)
 			embed.add_field(name=date, value=jump_url, inline=False)
 		embed.set_footer(text="requested by "+str(self.message.author))
 
