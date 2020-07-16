@@ -395,6 +395,11 @@ class About(Query):
 
 		print(self.filters[T.USER])
 
+		if len(most_common_msg[0]) > 400:
+			most_common_msg = (most_common_msg[0][:300] + "...", most_common_msg[1])
+		if len(first_msg[1]) > 400:
+			first_msg = (first_msg[0], first_msg[1][:300] + "...")
+
 		if len(self.filters[T.USER]) == 1:# and all([self.filters[x] == [] for x in set(self.filters.keys()) - set([T.USER])]):
 			whomst = self.filters[T.USER][0].name
 
@@ -404,14 +409,14 @@ class About(Query):
 			- %d are only one word or emoji (%.2f%%)
 
 			Their first message was on %s. Since then, they have sent an average of %.2f messages per day. Their first message was:
-			> %s
+			>>> %s
 
 			In total, %s has sent %d words, for an average of %.1f words per message. 
 
 			There have been %d reacts on %s's messages, for an average of %.2f reacts per message.
 
 			Their most common non-empty message (%d instances) is:
-			> %s
+			>>> %s
 			''' % (whomst, total_messages, num_pinned, num_pinned/total_messages*100.0, num_images, num_images/total_messages*100.0, \
 				num_singleword_messages, num_singleword_messages/total_messages*100.0, first_msg[0][:11], total_messages/float(days_elapsed), \
 				first_msg[1], whomst, total_words, total_words/total_messages, num_reacts, whomst, num_reacts/float(total_messages), most_common_msg[1], most_common_msg[0])
