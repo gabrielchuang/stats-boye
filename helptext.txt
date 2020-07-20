@@ -71,7 +71,7 @@ most (currently, all) of these commands are only available to ezekiel, so this i
 !add_bot <user>
 !remove_bot <user>
 !sudo <query, enclosed in triple backticks> 
-!add_bot_channel <channel>
+!change_channel_priv <channels> num -- num=2 for ignore-rq, 1 for bot, 0 for normal
 !initialize_server
 
 ```

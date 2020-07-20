@@ -108,7 +108,7 @@ async def change_channel_color(channel, color):
 		return False 
 	else:
 		c.execute('DELETE FROM channels WHERE channel_ID=?', (channel.id,))
-		c.execute('INSERT INTO channels VALUES(?,?,?,?)', (channel.guild.id, channel.id, color, channel.name))
+		c.execute('INSERT INTO channels VALUES(?,?,?,?,?)', (channel.guild.id, channel.id, color, channel.name, rows[0][4]))
 		print("channel " + channel.name + "'s color has been updated to " + color)
 		conn.commit()
 		c.close()
