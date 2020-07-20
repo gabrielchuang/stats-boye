@@ -439,6 +439,8 @@ class About(Query):
 				num_singleword_messages, num_singleword_messages/total_messages*100.0, first_msg[0][:11], total_messages/float(days_elapsed), \
 				first_msg[1], total_words, total_words/float(total_messages), num_reacts, num_reacts/float(total_messages), most_common_msg[1], most_common_msg[0])
 
+		print("embed length is " + str(len(p1)))
+
 		embed=discord.Embed(title="About "+self.titler(), color=int(self.get_a_color()[1:], 16))
 		embed.add_field(name="-", value=p1, inline=False)
 		embed.set_footer(text="requested by "+str(self.message.author))
@@ -463,7 +465,7 @@ class RandomQuote(Query):
 				self.embed = embed
 				return
 
-		query = '''SELECT clean_content, jump_url, users.username, timestamp FROM messages %s WHERE 1=1 %s ORDER BY RANDOM() LIMIT %d''' % (self.join_str, self.filter_str, numquotes)
+		query = '''SELECT clean_content, jump_url, users.username, timestamp FROM messages INNER JOIN channels on messages.channel_ID = channels.channel_ID %s WHERE channels.privs != 2 %s ORDER BY RANDOM() LIMIT %d''' % (self.join_str, self.filter_str, numquotes)
 		conn = sqlite3.connect(str(self.message.guild.id)+".db")
 		c = conn.cursor()
 		c.execute(query, self.args)

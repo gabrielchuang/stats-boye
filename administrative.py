@@ -88,10 +88,10 @@ async def refresh_channels(guild):
 			rows = c.fetchall()
 			if len(rows) > 0: #it's already there; keep the current color
 				c.execute('DELETE FROM channels WHERE channel_ID=?', (channel.id,))
-				c.execute('INSERT INTO channels VALUES(?,?,?,?)', (guild.id, channel.id, rows[0][2], channel.name))
+				c.execute('INSERT INTO channels VALUES(?,?,?,?,?)', (guild.id, channel.id, rows[0][2], channel.name, rows[0][4]))
 			else:
 				color = "#%06x" % random.randint(0, 0xFFFFFF)
-				c.execute('INSERT INTO channels VALUES(?,?,?,?)', (guild.id, channel.id, color, channel.name))
+				c.execute('INSERT INTO channels VALUES(?,?,?,?,?)', (guild.id, channel.id, color, channel.name, 0))
 			conn.commit()
 			c.close()
 	conn.close()
@@ -280,26 +280,47 @@ async def sudo(message):
 	conn.close()
 	return True
 
-async def add_bot_channels(channel):
-	bcs = open('bot-channels.csv')
-	bcs2 = bcs.read().split(',')
-	if str(channel.id) in bcs:
-		return False
-	bcs.close()
-	f = open('bot-channels.csv', 'a')
-	f.write(','+str(channel.id))
-	f.close()
+# change_channel_priv : updates the channel's priv column
+# 0 = normal
+# 1 = bot
+# 2 = ignore for rq
+async def change_channel_priv(channel, priv):
+	conn = sqlite3.connect(str(channel.guild.id)+".db")
+	c = conn.cursor()
+	c.execute('SELECT * FROM channels WHERE channel_ID=?', (channel.id,))
+	rows = c.fetchall()
+	print(rows[0])
+	if len(rows) == 0:
+		print("nonexistent channel or i can't access it")
+		return False 
+	else:
+		c.execute('DELETE FROM channels WHERE channel_ID=?', (channel.id,))
+		conn.commit()
+		c.execute('INSERT INTO channels VALUES(?,?,?,?,?)', (rows[0][0], rows[0][1], rows[0][2], rows[0][3], priv))
+		conn.commit()
+		c.close()
+	conn.close()
 	return True
+
+#	bcs = open('bot-channels.csv')
+#	bcs2 = bcs.read().split(',')
+#	if str(channel.id) in bcs:
+#		return False
+#	bcs.close()
+#	f = open('bot-channels.csv', 'a')
+#	f.write(','+str(channel.id))
+#	f.close()
+#	return True
 
 async def initialize_server(guild):
 	conn = sqlite3.connect(str(guild.id)+".db")
 	c = conn.cursor()
-	c.execute('''CREATE TABLE IF NOT EXISTS "channels" ("guild_ID" INTEGER, "channel_ID" INTEGER, "color" TEXT, "name" TEXT)''')
+	c.execute('''CREATE TABLE IF NOT EXISTS "channels" ("guild_ID" INTEGER, "channel_ID" INTEGER, "color" TEXT, "name" TEXT, "privs" INTEGER)''')
 	c.execute('''CREATE TABLE IF NOT EXISTS "emojis" ("emoji_ID" INTEGER, "guild_ID" INTEGER, "emoji_name" TEXT, "url" TEXT)''')
 	c.execute('''CREATE TABLE IF NOT EXISTS "emojis" ("emoji_ID" INTEGER, "guild_ID" INTEGER, "emoji_name" TEXT, "url" TEXT)''')
 	c.execute('''CREATE TABLE IF NOT EXISTS "messages" ("ID" INTEGER,"guild_ID" INTEGER, "author_ID" INTEGER, "channel_ID" INTEGER, "timestamp" TEXT, "content" TEXT, "clean_content" TEXT, "jump_url" TEXT, "pinned" INTEGER, "has_attachments" TEXT, "reacts" TEXT, "num_reacts" TEXT, "user_pings" TEXT, "role_pings" TEXT, "channel_pings" INTEGER)''')
 	c.execute('''CREATE TABLE IF NOT EXISTS "roles" ( "role_ID" INTEGER, "guild_ID" INTEGER, "name" TEXT, "color" TEXT)''')
-	c.execute('''CREATE TABLE "users" ("user_ID" INTEGER, "username" TEXT, "roles" TEXT, "guild_ID" INTEGER, "privs" INTEGER, "color" TEXT)''')
+	c.execute('''CREATE TABLE IF NOT EXISTS "users" ("user_ID" INTEGER, "username" TEXT, "roles" TEXT, "guild_ID" INTEGER, "privs" INTEGER, "color" TEXT)''')
 	conn.commit()
 	c.close()
 	conn.close()
@@ -339,8 +360,8 @@ async def run_admin_command(message, client):
 			success = all([await change_priv(message.guild.get_member(x.id), 0) for x in message.mentions]) 
 		elif cc+"sudo" in message.content:
 			success = await sudo(message)
-		elif cc+"add_bot_channel" in message.content:
-			success = all([await add_bot_channel(channel) for channel in channels])
+		elif cc+"change_channel_priv" in message.content:
+			success = all([await change_channel_priv(channel, int(message.content[-1])) for channel in channels])
 		#elif cc+"add_admin" in message.content:
 		#	success = all([await change_priv(message.guild.get_member(x.id), 2) for x in message.mentions]) 
 		#elif cc+"remove_admin" in message.content:
