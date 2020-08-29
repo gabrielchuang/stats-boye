@@ -55,6 +55,7 @@ Only include messages that do/don't have an attachment
 Only include messages that are/aren't pinned
 ```--pinned OR --not-pinned```
 
+You can precede channel:, user:, role:, and keyword: with ~ (a tilde character) to negate it, e.g. to exclude certain channels or users. 
 
 ----------
 
@@ -109,7 +110,9 @@ has-custom-react:`eyes1` [for custom emoji]
 --no-image OR --has-image
 --pinned OR --not-pinned
 
-!help/!statshelp !basics !filters !admin !misc 
+~ to negate channel:, user:, role:, keyword:
+
+!help !basics !filters !admin !misc 
 !cheatsheet or !cs
 ```
 
