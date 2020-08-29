@@ -26,6 +26,10 @@ class T(Enum):
 	CASE_SENSITIVE = 12
 	PINGS = 13
 	KEYWORD_INSENSITIVE = 14
+	N_CHANNEL = -1
+	N_USER = -2
+	N_KEYWORD = -3
+	N_ROLE = -4
 
 class ShadowUser():
 	def __init__(self, id, guild):
@@ -78,10 +82,19 @@ class Query:
 		self.daterange = self.parse_daterange()
 
 		#filters : (T enum -> 'a' list) dictionary
-		self.filters = {T.CHANNEL : self.parse_channels(),  			# channel object list
-						T.USER: self.parse_users(), 					# user object list
-						T.KEYWORD: self.parse_keywords(), 				# string list
-						T.ROLE: self.parse_roles(), 					# role object list
+		channels, not_channels = self.parse_channels()
+		roles, not_roles = self.parse_roles()
+		users, not_users = self.parse_users()
+		keywords, not_keywords = self.parse_keywords()
+
+		self.filters = {T.CHANNEL : channels,  							# channel object list
+						T.N_CHANNEL : not_channels,
+						T.USER: users,				 					# user object list
+						T.N_USER : not_users,
+						T.KEYWORD: keywords, 							# string list
+						T.N_KEYWORD : not_keywords,
+						T.ROLE: roles,				 					# role object list
+						T.N_ROLE: not_roles,
 						T.REACT: self.parse_hasreact() + self.parse_hasreact_custom(), 	# string/id list
 						T.PINGS : self.parse_pings(), 					# user object list
 						T.DATE_RANGE: self.parse_daterange(), 			# string * string tuple option
@@ -116,6 +129,12 @@ class Query:
 			where += " AND (" + "OR".join([self.filter_strings[filter_type] for x in self.filters[filter_type]]) + ")"
 			args += [x.id for x in self.filters[filter_type]]
 
+		for filter_type in [T.N_CHANNEL, T.N_ROLE, T.N_USER]:
+			if len(self.filters[filter_type]) == 0:
+				continue
+			where += " AND (" + "AND".join([" NOT " + self.filter_strings[T(filter_type.value * -1)] for x in self.filters[filter_type]]) + ")"
+			args += [x.id for x in self.filters[filter_type]]
+
 		if len(self.filters[T.KEYWORD]) != 0:
 			if self.filters[T.CASE_SENSITIVE]:
 				where += " AND (" + "OR".join([self.filter_strings[T.KEYWORD] for x in self.filters[T.KEYWORD]]) + ")"
@@ -123,6 +142,15 @@ class Query:
 			else:
 				where += " AND (" + "OR".join([self.filter_strings[T.KEYWORD_INSENSITIVE] for x in self.filters[T.KEYWORD]]) + ")"
 				args += [x.lower() for x in self.filters[T.KEYWORD]]
+
+		if len(self.filters[T.N_KEYWORD]) != 0:
+			if self.filters[T.CASE_SENSITIVE]:
+				where += " AND (" + "AND".join([" NOT " + self.filter_strings[T.KEYWORD] for x in self.filters[T.N_KEYWORD]]) + ")"
+				args += self.filters[T.N_KEYWORD]
+			else:
+				where += " AND (" + "AND".join([" NOT " + self.filter_strings[T.KEYWORD_INSENSITIVE] for x in self.filters[T.N_KEYWORD]]) + ")"
+				args += [x.lower() for x in self.filters[T.N_KEYWORD]]
+
 
 		if len(self.filters[T.REACT]) != 0:
 			where += " AND (" + "OR".join([self.filter_strings[T.REACT] for x in self.filters[T.REACT]]) + ")"
@@ -171,8 +199,14 @@ class Query:
 		if None in channels: 
 			raise InvalidQuery('invalid channel(s)')
 
+		anti_channel_names =  re.findall('~channel:`#?(?P<ch>.*?)`', self.message.content)
+		anti_channels = [self.client.get_channel(channel_info[name]) for name in anti_channel_names]
+
+		channels = list(set(channels) - set(anti_channels))
+
 		channels += [self.client.get_channel(c) for c in filter((lambda x : str(x) in self.message.content), channel_info.values())]
-		return list(set(channels))
+
+		return list(set(channels)), list(set(anti_channels))
 
 	def parse_roles(self):
 		conn = sqlite3.connect(str(self.message.guild.id)+".db")
@@ -189,8 +223,13 @@ class Query:
 		if None in roles: 
 			raise InvalidQuery('invalid role(s)')
 
+		anti_role_names =  re.findall('~role:`@?(?P<ch>.*?)`', self.message.content)
+		anti_roles = [self.message.guild.get_role(role_info[name]) for name in anti_role_names]
+		roles = list(set(roles) - set(anti_roles))
+
 		roles += [self.message.guild.get_role(c) for c in filter((lambda x : str(x) in self.message.content), role_info.values())]
-		return list(set(roles))
+		return list(set(roles)), list(set(anti_roles))
+
 	def parse_users(self):
 		conn = sqlite3.connect(str(self.message.guild.id)+".db")
 		c = conn.cursor()
@@ -199,18 +238,24 @@ class Query:
 
 		users = [ShadowUser(x.id, self.message.guild) for x in self.message.mentions]
 
-		user_names =  re.findall('user:`@?(?P<ch>.*?)`', self.message.content)
+		user_names = re.findall('user:`@?(?P<ch>.*?)`', self.message.content)
 		if len(set(user_names) - set(user_info.keys())) > 0:
 			raise InvalidQuery('invalid user(s): '+ str(set(user_names) - set(user_info.keys())))
 
 		users += [ShadowUser(user_info[name], self.message.guild) for name in user_names]
-#		if None in users: 
-#			raise InvalidQuery('invalid user(s)')
+
+		anti_user_names = re.findall('~user:`@?(?P<ch>.*?)`', self.message.content)
+		anti_users = [ShadowUser(user_info[name], self.message.guild) for name in anti_user_names]
+		users = list(set(users) - set(anti_users))
+
 		users += [ShadowUser(c, self.message.guild) for c in filter((lambda x : str(x) in self.message.content), user_info.values())]
-		return list(set(users))
+		return list(set(users)), list(set(anti_users))
 
 	def parse_keywords(self): 
 		inits = re.findall('keyword:`(?P<ch>.*?)`', self.message.content)
+		anti_inits = re.findall('~keyword:`(?P<ch>.*?)`', self.message.content)
+		inits = list(set(inits) - set(anti_inits))
+
 		print(inits)
 		print(self.message.content)
 
@@ -227,7 +272,18 @@ class Query:
 					break
 			if not found:
 				keywords.append(keyword)
-		return keywords
+		anti_keywords = []
+		for keyword in anti_inits: 
+			found = False
+			for poss in d.keys():
+				if ":"+poss+":" in keyword:
+					anti_keywords.append(keyword.replace(":"+poss+":", d[poss]))
+					found = True
+					break
+			if not found:
+				anti_keywords.append(keyword)
+
+		return keywords, anti_keywords
 
 	def parse_pings(self):
 		conn = sqlite3.connect(str(self.message.guild.id)+".db")
