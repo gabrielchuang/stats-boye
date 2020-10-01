@@ -168,7 +168,6 @@ class Query:
 		if self.filters[T.EXCLUDE_BOTS]:
 			where += " AND " + self.filter_strings[T.EXCLUDE_BOTS]
 
-		print(where)
 
 		return (where, args)			
 
@@ -256,7 +255,6 @@ class Query:
 		anti_inits = re.findall('~keyword:`(?P<ch>.*?)`', self.message.content)
 		inits = list(set(inits) - set(anti_inits))
 
-		print(inits)
 		print(self.message.content)
 
 		# rip how discord deals with emoji and backtick delimiters D;
@@ -449,8 +447,7 @@ class About(Query):
 		c.execute(''' SELECT clean_content, COUNT(clean_content) AS freq ''' + query_secondhalf + ''' AND CLEAN_CONTENT != "" GROUP BY clean_content ORDER BY freq DESC LIMIT 1 ''', self.args)
 		most_common_msg = c.fetchall()[0]
 
-		print(self.filters[T.USER])
-
+		
 		if len(most_common_msg[0]) > 400:
 			most_common_msg = (most_common_msg[0][:300] + "...", most_common_msg[1])
 		if len(first_msg[1]) > 400:
@@ -529,8 +526,8 @@ class RandomQuote(Query):
 
 		embed=discord.Embed(title="random quote(s)!", color=0xEC407A)
 
-		print(numquotes)
-		print(randomquotes)
+		#print(numquotes)
+		#print(randomquotes)
 
 		for quote in randomquotes:
 			text = quote[0]

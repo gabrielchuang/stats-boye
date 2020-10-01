@@ -56,7 +56,6 @@ class PieChart(Chart):
 		slices =  re.findall('slices:`?(?P<ch>[0-9]*)`?', self.message.content)
 		if len(slices) == 0:
 			return 15
-		print(slices)
 		return int(slices[0])
 
 	def construct_sql_query(self):
@@ -71,20 +70,14 @@ class PieChart(Chart):
 		df = df.sort_values(by='msgs', ascending=False)
 
 		if len(df) > self.num_slices:
-			print('hi')
 			minslicesize = (df.iloc[self.num_slices]['msgs'])
 			other_qty = df.loc[df['msgs'] <= minslicesize,['msgs']].sum(axis=0)['msgs']
-			print(df)
 			df.loc[len(df)] = [other_qty, 'other', '#F5F5F5']
-			print(other_qty)
-			print(df)
 			df = df[df['msgs'] > minslicesize]	
 
 		df = df.set_index(self.split[2])
 		ax = plt.subplot(111, aspect='equal')
 		ax.set_ylabel('')
-
-		print(df)
 
 		df.plot(kind='pie', y='msgs', ax=ax, legend=False, startangle=90, \
 			counterclock=False, autopct='%1.0f%%', pctdistance=0.8, colors=df['color'].tolist())
@@ -129,8 +122,6 @@ class TimeChart(Chart):
 	def construct_timechart(self):
 		plt.close('all')
 
-		print(self.query)
-
 		conn = sqlite3.connect(str(self.message.guild.id)+".db")
 
 		ax = plt.subplot(111)
@@ -156,7 +147,6 @@ class TimeChart(Chart):
 			else:
 				for x in self.filters[self.split[0]]:
 					df0 = df[df[self.split[2]] == x.name]
-					print(df0)
 					g = [datetime.strptime(ts, '%H:%M') + timedelta(hours=-4) for ts in df0['timestamp']]
 					dates = matplotlib.dates.date2num(g)
 					matplotlib.pyplot.plot_date(dates, df0['msgs'], ls='solid', marker=None, color=list(df0['color'])[0], label=str(x.name))
@@ -206,8 +196,7 @@ class BarChart(Chart):
 		ax = plt.subplot(111, aspect='equal')
 		ax.set_ylabel('msgs')
 
-		print(df)
-
+	
 		colors = [self.get_a_color()]
 
 		df.plot(kind='bar', x=self.split[2], color=colors)
@@ -238,8 +227,6 @@ class WordCountDistribution(Chart):
 		df = pd.read_sql_query(self.query, conn, params=self.args)
 		df = df.sort_values(by='words')
 
-		print(df)
-
 		df['msgs'] = df['msgs']/float(df['msgs'].sum())
 
 		df = df.set_index('words')
@@ -266,8 +253,7 @@ class MessageCloud(Chart):
 		c.execute(self.query, self.args)
 		words = c.fetchall()[0][0]
 
-		print('hi123')
-
+	
 		wc = WordCloud().generate(words)
 		wc.to_file(self.filename)
 
