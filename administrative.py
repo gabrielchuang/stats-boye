@@ -215,6 +215,8 @@ async def refresh_messages(channel):
 	c = conn.cursor()
 	granularity = 100000
 
+	print('starting', channel.name)
+
 	async for message in channel.history(limit=10000000):
 		if message.id == last_message_here:
 			break 
