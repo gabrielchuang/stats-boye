@@ -14,7 +14,11 @@ from charts import *
 from miscellany import *
 
 token = open('token.txt').read()
-client = discord.Client()
+
+intents = discord.Intents.default()
+intents.members = True
+
+client = discord.Client(intents=intents)
 plt.close('all')
 
 cc = open('command_character.txt').read()[0]# command character
@@ -77,7 +81,7 @@ async def run_query(message, client):
 async def on_message(message):
 	bot_channels = open('bot-channels.csv').read().strip().split(',')
 
-	if str(message.channel.id) in bot_channels and message.author != message.guild.me:
+	if str(message.channel) == "bot-testing": #str(message.channel.id) in bot_channels and message.author != message.guild.me and 
 		if any([(cc+x) in message.content for x in admin_commands]):
 			if str(message.author.id) in auth_admins:
 				await run_admin_command(message, client)
