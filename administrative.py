@@ -196,9 +196,10 @@ async def clear_all_entries():
 async def get_most_recently_added(channel):
 	conn = sqlite3.connect(str(channel.guild.id)+".db")
 	c = conn.cursor()
-	c.execute('SELECT * FROM messages WHERE channel_ID=? ORDER BY timestamp DESC limit 1', (channel.id,))
+	c.execute('SELECT id, timestamp FROM messages WHERE channel_ID=? ORDER BY timestamp DESC limit 1', (channel.id,))
 	rows = c.fetchall()
 	last_id = 0 if len(rows) == 0 else int(rows[0][0])
+	last_tiemstamp = 'z'
 	c.close()
 	conn.close()
 	return last_id
@@ -215,10 +216,10 @@ async def refresh_messages(channel):
 	c = conn.cursor()
 	granularity = 100000
 
-	print('starting', channel.name)
+	print('starting', channel.name, "last message here was ")
 
 	async for message in channel.history(limit=10000000):
-		if message.id == last_message_here:
+		if message.id <= last_message_here:
 			break 
 
 		count = count + 1

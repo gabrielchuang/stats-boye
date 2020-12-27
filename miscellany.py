@@ -24,7 +24,6 @@ async def run_misc_command(message, client):
 	else: 
 		await message.add_reaction("❌")
 
-
 async def send_help(message):
 	text = open('helptext.txt').read().split('----------')
 
