@@ -45,7 +45,7 @@ class PieChart(Chart):
 		self.type = "pie"
 		self.num_slices = self.parse_slices()
 
-		self.split = self.parse_split(default=(T.CHANNEL, 'channels.name', 'channel', 'channels'))
+		self.split = self.parse_split(default=(T.CHANNEL, 'channels.name', 'channel', 'channels', 'channels.channel_ID'))
 		self.filter_str, self.args = self.sql_filter_string()
 		self.join_str = self.sql_joins_string()
 
@@ -163,7 +163,7 @@ class BarChart(Chart):
 		self.type = "bar"
 		self.num_bars = self.parse_bars()
 
-		self.split = self.parse_split(default=(T.USER, 'users.username', 'user', 'users'))
+		self.split = self.parse_split(default=(T.USER, 'users.username', 'user', 'users', 'users.user_ID'))
 		self.filter_str, self.args = self.sql_filter_string()
 		self.join_str = self.sql_joins_string()
 
