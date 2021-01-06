@@ -60,7 +60,7 @@ class PieChart(Chart):
 
 	def construct_sql_query(self):
 		query = ''' SELECT count(messages.ID) as msgs, %s as %s, %s.color FROM messages %s
-					WHERE 1=1 %s GROUP BY %s''' % (self.split[1], self.split[2], self.split[3], self.join_str, self.filter_str, self.split[1])
+					WHERE 1=1 %s GROUP BY %s''' % (self.split[1], self.split[2], self.split[3], self.join_str, self.filter_str, self.split[4])
 		return query
 
 	def construct_piechart(self): 
@@ -178,7 +178,7 @@ class BarChart(Chart):
 
 	def construct_sql_query(self):
 		query = ''' SELECT count(messages.ID) as msgs, %s as %s, %s.color FROM messages %s
-					WHERE 1=1 %s GROUP BY %s ORDER BY count(messages.ID) DESC LIMIT %s''' % (self.split[1], self.split[2], self.split[3], self.join_str, self.filter_str, self.split[1], self.num_bars)
+					WHERE 1=1 %s GROUP BY %s ORDER BY count(messages.ID) DESC LIMIT %s''' % (self.split[1], self.split[2], self.split[3], self.join_str, self.filter_str, self.split[4], self.num_bars)
 		return query
 
 	def construct_barchart(self): 

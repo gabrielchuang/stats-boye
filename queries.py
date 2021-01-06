@@ -354,8 +354,8 @@ class Query:
 		split =  re.findall('split-by:`(?P<ch>.*?)`', self.message.content)
 		if len(split) == 0:
 			return default
-		d = {'channel' : (T.CHANNEL, 'channels.name', 'channel', 'channels'),
-			 'user' : (T.USER, 'users.username', 'user', 'users')}
+		d = {'channel' : (T.CHANNEL, 'channels.name', 'channel', 'channels', 'channels.channel_ID'),
+			 'user' : (T.USER, 'users.username', 'user', 'users', 'users.user_ID')}
 		try:
 			return d[split[0]]
 		except KeyError:
