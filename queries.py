@@ -494,6 +494,8 @@ class About(Query):
 
 		print("embed length is " + str(len(p1)))
 
+		p1 = (p1[:1020] + "...") if len(p1)>1024 else p1
+
 		embed=discord.Embed(title="About "+self.titler(), color=int(self.get_a_color()[1:], 16))
 		embed.add_field(name="-", value=p1, inline=False)
 		embed.set_footer(text="requested by "+str(self.message.author))
