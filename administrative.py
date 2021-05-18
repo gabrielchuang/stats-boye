@@ -87,6 +87,7 @@ async def refresh_channels(guild):
 			c.execute('SELECT * FROM channels WHERE channel_ID=?', (channel.id,))
 			rows = c.fetchall()
 			if len(rows) > 0: #it's already there; keep the current color
+				print(rows)
 				c.execute('DELETE FROM channels WHERE channel_ID=?', (channel.id,))
 				c.execute('INSERT INTO channels VALUES(?,?,?,?,?)', (guild.id, channel.id, rows[0][2], channel.name, rows[0][4]))
 			else:
@@ -214,7 +215,7 @@ async def refresh_messages(channel):
 	message_data = []
 	count = 0
 	c = conn.cursor()
-	granularity = 100000
+	granularity = 1000
 
 	print('starting', channel.name, "last message here was ")
 
@@ -369,8 +370,16 @@ async def run_admin_command(message, client):
 		#	success = all([await change_priv(message.guild.get_member(x.id), 2) for x in message.mentions]) 
 		#elif cc+"remove_admin" in message.content:
 		#	success = all([await change_priv(message.guild.get_member(x.id), 0) for x in message.mentions]) 
+		elif cc+"refresh" in message.content:
+			success = await refresh_users(message.guild)
+			success = success and await refresh_all_messages(message.guild)
+			success = success and await refresh_roles(message.guild)
+			success = success and await refresh_emojis(message.guild)
+			success = success and all([await refresh_messages(x) >= 0 for x in channels]) and len(channels) > 0
+			print("done")
 		else:
 			success = False
+
 
 	await message.remove_reaction('⚙️', message.guild.me)
 

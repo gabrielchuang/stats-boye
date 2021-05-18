@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import json
 import os
 from datetime import datetime, timedelta
-from wordcloud import WordCloud
+#from wordcloud import WordCloud
 
 from queries import *
 

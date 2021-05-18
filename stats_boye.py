@@ -2,7 +2,6 @@ import discord
 import time
 import sqlite3
 import datetime
-import pandas as pd 
 import numpy as np 
 import matplotlib
 matplotlib.use('Agg')
@@ -26,7 +25,7 @@ cc = open('command_character.txt').read()[0]# command character
 banned_channels = open('banned_channels.csv').read().split(',')
 
 chart_commands = ['bar', 'pie', 'time', 'randomquote', 'rq', 'about', 'aboutme', 'wordcloud', 'cloud']
-admin_commands = ['add_ignored_channel', 'set_color', 'refresh_users', 'refresh_messages', 'clear_messages_table', 'refresh_channel', 'refresh_roles', 'refresh_emojis', 'add_bot', 'remove_bot', 'add_admin', 'remove_admin', 'sudo', 'change_channel_priv', 'initialize_server']
+admin_commands = ['add_ignored_channel', 'set_color', 'refresh_users', 'refresh_messages', 'clear_messages_table', 'refresh_channel', 'refresh_roles', 'refresh_emojis', 'add_bot', 'remove_bot', 'add_admin', 'remove_admin', 'sudo', 'change_channel_priv', 'initialize_server', 'refresh']
 misc_commands = ['set_my_color', 'basics', 'misc', 'admin', 'filters', 'cs', 'cheatsheet', 'help', 'statshelp']
 
 auth_admins = open('admins.csv').read().strip().split(',')
