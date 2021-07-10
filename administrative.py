@@ -218,31 +218,26 @@ async def refresh_messages(channel):
 	granularity = 1000
 
 	print('starting', channel.name, "last message here was ")
-
-	async for message in channel.history(limit=10000000):
-		if message.id <= last_message_here:
-			break 
-
-		count = count + 1
-
-		timestamp = message.created_at.isoformat(sep=' ', timespec='seconds')
-		mentions = ",".join([str(x.id) for x in message.mentions])
-		role_mentions = ",".join([str(x.id) for x in message.role_mentions])
-		reacts = ",".join([x.emoji if isinstance(x.emoji, str) else str(x.emoji.id) for x in message.reactions])
-		num_reacts = ",".join([str(x.count) for x in message.reactions])
-		channel_mentions = ",".join([str(x.id) for x in message.channel_mentions])
-		has_attachments = 1 if len(message.attachments) > 0 else 0
-		is_pinned = 1 if message.pinned else 0
-
-		message_data.append((message.id, message.guild.id, message.author.id, message.channel.id, \
-				timestamp, message.content, \
-				message.clean_content, message.jump_url, is_pinned, has_attachments, reacts, \
-				num_reacts, mentions, role_mentions, channel_mentions))
-		if count % granularity == 0:
-			print(count)
-			c.executemany('INSERT INTO messages VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', message_data)
-			conn.commit()
-			message_data = []
+	
+	# Get a list of messages
+	messages = channel.history(limit=None, after=last_message_here).flatten()
+	
+	# Do the python lambda thing to make the message_data list
+	message_data = list(map(lambda x: (x.id, # Message ID
+					   x.guild.id, # Message Guild
+					   x.author.id, # Message Author ID
+					   x.channel.id, # Message Channel ID
+					   x.created_at.isoformat(sep=' ', timespec='seconds'), # Timestamp
+					   x.content, # Message Content
+					   x.clean_content, # Message Clean Content
+					   x.jump_url, # Message URL
+					   1 if x.pinned else 0, # Pinned Status
+					   1 if len(x.attachments) > 0 else 0, # Attachment Status
+					   ",".join([y.emoji if isinstance(y.emoji, str) else str(y.emoji.id) for y in x.reactions]), # Reacts
+					   ",".join([str(y.count) for y in x.reactions]), # Reaction Count
+					   ",".join([str(y.id) for y in x.role_mentions]), # Role Mentions
+					   ",".join([str(y.id) for y in x.channel_mentions]) # Channel Mentions
+					  ), messages))
 
 	c.executemany('INSERT INTO messages VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', message_data)
 	conn.commit()
