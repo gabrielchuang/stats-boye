@@ -207,7 +207,11 @@ async def get_most_recently_added(channel):
 
 # refresh_messages : adds all new messages from the channel to the db. returns num msgs added.
 async def refresh_messages(channel):
-	last_message_here = await get_most_recently_added(channel)
+	last_message_here_id = await get_most_recently_added(channel)
+	try:
+		last_message_here = await channel.fetch_message(last_message_here_id)
+	except discord.errors.NotFound:
+		print(f'message not found: {last_message_here_id}')
 	
 	if channel.id in banned_channels: 
 		return False
@@ -220,7 +224,7 @@ async def refresh_messages(channel):
 	print('starting', channel.name, "last message here was ")
 	
 	# Get a list of messages
-	messages = channel.history(limit=None, after=last_message_here).flatten()
+	messages = await channel.history(limit=None, after=last_message_here).flatten()
 	
 	# Do the python lambda thing to make the message_data list
 	message_data = list(map(lambda x: (x.id, # Message ID
@@ -235,6 +239,7 @@ async def refresh_messages(channel):
 					   1 if len(x.attachments) > 0 else 0, # Attachment Status
 					   ",".join([y.emoji if isinstance(y.emoji, str) else str(y.emoji.id) for y in x.reactions]), # Reacts
 					   ",".join([str(y.count) for y in x.reactions]), # Reaction Count
+					   ",".join([str(y.id) for y in x.mentions]), # User Mentions
 					   ",".join([str(y.id) for y in x.role_mentions]), # Role Mentions
 					   ",".join([str(y.id) for y in x.channel_mentions]) # Channel Mentions
 					  ), messages))
