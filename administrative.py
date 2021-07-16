@@ -199,32 +199,44 @@ async def get_most_recently_added(channel):
 	c = conn.cursor()
 	c.execute('SELECT id, timestamp FROM messages WHERE channel_ID=? ORDER BY timestamp DESC limit 1', (channel.id,))
 	rows = c.fetchall()
-	last_id = 0 if len(rows) == 0 else int(rows[0][0])
-	last_tiemstamp = 'z'
+	ts = rows[0][1]
+	last_id = None if len(rows) == 0 else int(rows[0][0])
+
 	c.close()
 	conn.close()
 	return last_id
 
+# get_most_recently_added : gets the datetime object corresponding to the timestamp of the 
+# most recent message in the channel that is in the db. 
+async def get_most_recently_added_time(channel):
+	conn = sqlite3.connect(str(channel.guild.id)+".db")
+	c = conn.cursor()
+	c.execute('SELECT id, timestamp FROM messages WHERE channel_ID=? ORDER BY timestamp DESC limit 1', (channel.id,))
+	rows = c.fetchall()
+	c.close()
+	conn.close()
+	if len(rows) > 0:
+		ts = rows[0][1]
+		return datetime.fromisoformat(ts)
+	else:
+		return None
+
+
 # refresh_messages : adds all new messages from the channel to the db. returns num msgs added.
 async def refresh_messages(channel):
-	last_message_here_id = await get_most_recently_added(channel)
-	try:
-		last_message_here = await channel.fetch_message(last_message_here_id)
-	except discord.errors.NotFound:
-		print(f'message not found: {last_message_here_id}')
-	
+	last_message_here_ts = await get_most_recently_added_time(channel)
+
 	if channel.id in banned_channels: 
 		return False
+
 	conn = sqlite3.connect(str(channel.guild.id)+".db")
 	message_data = []
-	count = 0
 	c = conn.cursor()
-	granularity = 1000
 
-	print('starting', channel.name, "last message here was ")
+	print('starting', channel.name)
 	
 	# Get a list of messages
-	messages = await channel.history(limit=None, after=last_message_here).flatten()
+	messages = await channel.history(limit=None, after=last_message_here_ts).flatten()
 	
 	# Do the python lambda thing to make the message_data list
 	message_data = list(map(lambda x: (x.id, # Message ID
@@ -248,8 +260,8 @@ async def refresh_messages(channel):
 	conn.commit()
 	c.close()
 	conn.close()
-	print("added", count, "messages to db from channel", channel.name)
-	return count
+	print("added", len(messages), "messages to db from channel", channel.name)
+	return len(messages)
 
 # refresh_all_messages : calls refresh_messages on each channel. 
 #	returns False if any fail, else True. 
