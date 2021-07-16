@@ -194,19 +194,6 @@ async def clear_all_entries():
 	conn.close()
 	return True
 
-# get_most_recently_added : gets the most recent message in the channel. 
-async def get_most_recently_added(channel):
-	conn = sqlite3.connect(str(channel.guild.id)+".db")
-	c = conn.cursor()
-	c.execute('SELECT id, timestamp FROM messages WHERE channel_ID=? ORDER BY timestamp DESC limit 1', (channel.id,))
-	rows = c.fetchall()
-	ts = rows[0][1]
-	last_id = None if len(rows) == 0 else int(rows[0][0])
-
-	c.close()
-	conn.close()
-	return last_id
-
 # get_most_recently_added : gets the datetime object corresponding to the message object of the 
 # most recent message in the channel that is in the db, or the datetime object if that message no longer 
 # exists, or None otherwise
