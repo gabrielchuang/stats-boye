@@ -1,6 +1,7 @@
 import discord
 import sqlite3
 import datetime
+from datetime import timedelta
 import re
 import random
 from queries import *
@@ -206,9 +207,10 @@ async def get_most_recently_added(channel):
 	conn.close()
 	return last_id
 
-# get_most_recently_added : gets the datetime object corresponding to the timestamp of the 
-# most recent message in the channel that is in the db. 
-async def get_most_recently_added_time(channel):
+# get_most_recently_added : gets the datetime object corresponding to the message object of the 
+# most recent message in the channel that is in the db, or the datetime object if that message no longer 
+# exists, or None otherwise
+async def get_most_recently_added(channel):
 	conn = sqlite3.connect(str(channel.guild.id)+".db")
 	c = conn.cursor()
 	c.execute('SELECT id, timestamp FROM messages WHERE channel_ID=? ORDER BY timestamp DESC limit 1', (channel.id,))
@@ -217,14 +219,18 @@ async def get_most_recently_added_time(channel):
 	conn.close()
 	if len(rows) > 0:
 		ts = rows[0][1]
-		return datetime.fromisoformat(ts)
+		try:
+			last_msg = await channel.fetch_message(rows[0][0])
+			return last_msg
+		except discord.NotFound:
+			return datetime.fromisoformat(ts)
 	else:
 		return None
 
 
 # refresh_messages : adds all new messages from the channel to the db. returns num msgs added.
 async def refresh_messages(channel):
-	last_message_here_ts = await get_most_recently_added_time(channel)
+	last_message_here_ts = await get_most_recently_added(channel)
 
 	if channel.id in banned_channels: 
 		return False
