@@ -1,6 +1,7 @@
 import discord
 import sqlite3
 import datetime
+from datetime import timedelta
 import re
 import random
 from queries import *
@@ -193,63 +194,67 @@ async def clear_all_entries():
 	conn.close()
 	return True
 
-# get_most_recently_added : gets the most recent message in the channel. 
+# get_most_recently_added : gets the datetime object corresponding to the message object of the 
+# most recent message in the channel that is in the db, or the datetime object if that message no longer 
+# exists, or None otherwise
 async def get_most_recently_added(channel):
 	conn = sqlite3.connect(str(channel.guild.id)+".db")
 	c = conn.cursor()
 	c.execute('SELECT id, timestamp FROM messages WHERE channel_ID=? ORDER BY timestamp DESC limit 1', (channel.id,))
 	rows = c.fetchall()
-	last_id = 0 if len(rows) == 0 else int(rows[0][0])
-	last_tiemstamp = 'z'
 	c.close()
 	conn.close()
-	return last_id
+	if len(rows) > 0:
+		ts = rows[0][1]
+		try:
+			last_msg = await channel.fetch_message(rows[0][0])
+			return last_msg
+		except discord.NotFound:
+			return datetime.fromisoformat(ts)
+	else:
+		return None
+
 
 # refresh_messages : adds all new messages from the channel to the db. returns num msgs added.
 async def refresh_messages(channel):
-	last_message_here = await get_most_recently_added(channel)
-	
+	last_message_here_ts = await get_most_recently_added(channel)
+
 	if channel.id in banned_channels: 
 		return False
+
 	conn = sqlite3.connect(str(channel.guild.id)+".db")
 	message_data = []
-	count = 0
 	c = conn.cursor()
-	granularity = 1000
 
-	print('starting', channel.name, "last message here was ")
-
-	async for message in channel.history(limit=10000000):
-		if message.id <= last_message_here:
-			break 
-
-		count = count + 1
-
-		timestamp = message.created_at.isoformat(sep=' ', timespec='seconds')
-		mentions = ",".join([str(x.id) for x in message.mentions])
-		role_mentions = ",".join([str(x.id) for x in message.role_mentions])
-		reacts = ",".join([x.emoji if isinstance(x.emoji, str) else str(x.emoji.id) for x in message.reactions])
-		num_reacts = ",".join([str(x.count) for x in message.reactions])
-		channel_mentions = ",".join([str(x.id) for x in message.channel_mentions])
-		has_attachments = 1 if len(message.attachments) > 0 else 0
-		is_pinned = 1 if message.pinned else 0
-
-		message_data.append((message.id, message.guild.id, message.author.id, message.channel.id, \
-				timestamp, message.content, \
-				message.clean_content, message.jump_url, is_pinned, has_attachments, reacts, \
-				num_reacts, mentions, role_mentions, channel_mentions))
-		if count % granularity == 0:
-			print(count)
-			c.executemany('INSERT INTO messages VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', message_data)
-			conn.commit()
-			message_data = []
+	print('starting', channel.name)
+	
+	# Get a list of messages
+	messages = await channel.history(limit=None, after=last_message_here_ts).flatten()
+	
+	# Do the python lambda thing to make the message_data list
+	message_data = list(map(lambda x: (x.id, # Message ID
+					   x.guild.id, # Message Guild
+					   x.author.id, # Message Author ID
+					   x.channel.id, # Message Channel ID
+					   x.created_at.isoformat(sep=' ', timespec='seconds'), # Timestamp
+					   x.content, # Message Content
+					   x.clean_content, # Message Clean Content
+					   x.jump_url, # Message URL
+					   1 if x.pinned else 0, # Pinned Status
+					   1 if len(x.attachments) > 0 else 0, # Attachment Status
+					   ",".join([y.emoji if isinstance(y.emoji, str) else str(y.emoji.id) for y in x.reactions]), # Reacts
+					   ",".join([str(y.count) for y in x.reactions]), # Reaction Count
+					   ",".join([str(y.id) for y in x.mentions]), # User Mentions
+					   ",".join([str(y.id) for y in x.role_mentions]), # Role Mentions
+					   ",".join([str(y.id) for y in x.channel_mentions]) # Channel Mentions
+					  ), messages))
 
 	c.executemany('INSERT INTO messages VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', message_data)
 	conn.commit()
 	c.close()
 	conn.close()
-	print("added", count, "messages to db from channel", channel.name)
-	return count
+	print("added", len(messages), "messages to db from channel", channel.name)
+	return len(messages)
 
 # refresh_all_messages : calls refresh_messages on each channel. 
 #	returns False if any fail, else True. 
